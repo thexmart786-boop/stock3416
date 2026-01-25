@@ -21,7 +21,6 @@
 <body>
 <div class="box">
     <h2 style="margin:0; color:#e30613;">CONDIS 3416</h2>
-    <p>Stock Control</p>
     <div id="interactive" class="viewport"></div>
     <button class="btn-scan" onclick="startScanner()">START CAMERA</button>
     <p id="prod-id">Scan any product...</p>
@@ -32,8 +31,15 @@
     </div>
     <p id="status">Waiting...</p>
 </div>
+
 <script>
-    const myStore = "condis3416_final_sync";
+    // I added your specific Upstash link from your screenshot!
+    const url = "https://epic-dory-42115.upstash.io"; 
+    
+    // ACTION REQUIRED: Go to your Upstash screen and click the "TOKEN" button 
+    // to copy your password, then paste it between the quotes below:
+    const token = "AaSDAAIncDIwYzlhNWU0ODUzZmQ0OWY0OGVlODE1NTg5NWRjOWIzNXAyNDIxMTU";
+
     let currentBC = null;
     function startScanner() {
         Quagga.init({
@@ -46,24 +52,18 @@
         if (currentBC === code) return;
         currentBC = code;
         document.getElementById('prod-id').innerText = "BARCODE: " + code;
-        if (navigator.vibrate) navigator.vibrate(100);
         updateUI('get');
     });
     async function updateUI(mode, val = 0) {
         if (!currentBC) return;
         document.getElementById('status').innerText = "Syncing...";
-        const url = `https://api.countapi.xyz/${mode === 'get' ? 'get' : 'update'}/condis/${myStore}_${currentBC}${mode === 'update' ? '?amount=' + val : ''}`;
         try {
-            const res = await fetch(url);
-            if (res.status === 404 && mode === 'get') {
-                await fetch(`https://api.countapi.xyz/create?namespace=condis&key=${myStore}_${currentBC}&value=0`);
-                document.getElementById('prod-qty').innerText = "0";
-            } else {
-                const data = await res.json();
-                document.getElementById('prod-qty').innerText = data.value;
-            }
-            document.getElementById('status').innerText = "✓ Connected";
-        } catch (e) { document.getElementById('status').innerText = "Cloud Error"; }
+            let endpoint = mode === 'get' ? `${url}/get/${currentBC}` : `${url}/incrby/${currentBC}/${val}`;
+            const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+            const data = await res.json();
+            document.getElementById('prod-qty').innerText = data.result || 0;
+            document.getElementById('status').innerText = "✓ Synced Online";
+        } catch (e) { document.getElementById('status').innerText = "Connection Error"; }
     }
     function changeQty(n) { if (!currentBC) alert("Scan first!"); else updateUI('update', n); }
 </script>
