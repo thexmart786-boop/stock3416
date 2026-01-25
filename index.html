@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Condis 3416 Master</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #e30613; padding: 10px; margin: 0; }
+        .box { background: white; padding: 20px; border-radius: 20px; max-width: 400px; margin: auto; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+        #interactive.viewport { width: 100%; height: 250px; background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        .qty-box { font-size: 60px; font-weight: bold; color: #005696; margin: 10px 0; }
+        button { padding: 20px; font-size: 20px; border-radius: 10px; border: none; cursor: pointer; font-weight: bold; width: 45%; }
+        .btn-plus { background: #005696; color: white; }
+        .btn-minus { background: #666; color: white; }
+        .btn-scan { background: #e30613; color: white; width: 100%; margin-bottom: 10px; }
+        #status { color: #00a859; font-weight: bold; margin-top: 10px; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <h2 style="margin:0; color:#e30613;">CONDIS 3416</h2>
+    <p>Stock Control</p>
+    <div id="interactive" class="viewport"></div>
+    <button class="btn-scan" onclick="startScanner()">START CAMERA</button>
+    <p id="prod-id">Scan any product...</p>
+    <div class="qty-box" id="prod-qty">0</div>
+    <div>
+        <button class="btn-minus" onclick="changeQty(-1)">-1</button>
+        <button class="btn-plus" onclick="changeQty(1)">+1</button>
+    </div>
+    <p id="status">Waiting...</p>
+</div>
+<script>
+    const myStore = "condis3416_final_sync";
+    let currentBC = null;
+    function startScanner() {
+        Quagga.init({
+            inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#interactive'), constraints: { facingMode: "environment" } },
+            decoder: { readers: ["ean_reader", "upc_reader", "code_128_reader"] }
+        }, (err) => { if (err) return alert("Camera Error"); Quagga.start(); });
+    }
+    Quagga.onDetected((data) => {
+        let code = data.codeResult.code;
+        if (currentBC === code) return;
+        currentBC = code;
+        document.getElementById('prod-id').innerText = "BARCODE: " + code;
+        if (navigator.vibrate) navigator.vibrate(100);
+        updateUI('get');
+    });
+    async function updateUI(mode, val = 0) {
+        if (!currentBC) return;
+        document.getElementById('status').innerText = "Syncing...";
+        const url = `https://api.countapi.xyz/${mode === 'get' ? 'get' : 'update'}/condis/${myStore}_${currentBC}${mode === 'update' ? '?amount=' + val : ''}`;
+        try {
+            const res = await fetch(url);
+            if (res.status === 404 && mode === 'get') {
+                await fetch(`https://api.countapi.xyz/create?namespace=condis&key=${myStore}_${currentBC}&value=0`);
+                document.getElementById('prod-qty').innerText = "0";
+            } else {
+                const data = await res.json();
+                document.getElementById('prod-qty').innerText = data.value;
+            }
+            document.getElementById('status').innerText = "✓ Connected";
+        } catch (e) { document.getElementById('status').innerText = "Cloud Error"; }
+    }
+    function changeQty(n) { if (!currentBC) alert("Scan first!"); else updateUI('update', n); }
+</script>
+</body>
+</html>
