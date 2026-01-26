@@ -3,69 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Condis 3416 Master</title>
+    <title>Condis 3416 - Shared Stock</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         body { font-family: sans-serif; text-align: center; background: #e30613; padding: 10px; margin: 0; }
-        .box { background: white; padding: 20px; border-radius: 20px; max-width: 400px; margin: auto; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
-        #interactive.viewport { width: 100%; height: 250px; background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
+        .box { background: white; padding: 15px; border-radius: 20px; max-width: 450px; margin: auto; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        #interactive.viewport { width: 100%; height: 200px; background: #000; border-radius: 10px; overflow: hidden; position: relative; margin-bottom: 10px; }
+        #interactive.viewport::after { content: ""; position: absolute; top: 25%; left: 10%; right: 10%; bottom: 25%; border: 2px solid red; pointer-events: none; }
         video { width: 100%; height: 100%; object-fit: cover; }
-        .qty-box { font-size: 60px; font-weight: bold; color: #005696; margin: 10px 0; }
-        button { padding: 20px; font-size: 20px; border-radius: 10px; border: none; cursor: pointer; font-weight: bold; width: 45%; }
-        .btn-plus { background: #005696; color: white; }
-        .btn-minus { background: #666; color: white; }
-        .btn-scan { background: #e30613; color: white; width: 100%; margin-bottom: 10px; }
-        #status { color: #00a859; font-weight: bold; margin-top: 10px; }
+        .qty-box { font-size: 50px; font-weight: bold; color: #005696; margin: 10px 0; }
+        button { padding: 15px; font-size: 16px; border-radius: 10px; border: none; cursor: pointer; font-weight: bold; margin: 5px; transition: 0.2s; }
+        button:active { opacity: 0.7; }
+        .btn-plus { background: #005696; color: white; width: 40%; }
+        .btn-minus { background: #666; color: white; width: 40%; }
+        .btn-scan { background: #e30613; color: white; width: 95%; }
+        .btn-list { background: #222; color: white; width: 95%; margin-top: 15px; }
+        #stock-list-container { margin-top: 20px; max-height: 300px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background: #f4f4f4; position: sticky; top: 0; }
+        #status { font-size: 12px; color: #666; margin-top: 5px; }
     </style>
 </head>
 <body>
 <div class="box">
-    <h2 style="margin:0; color:#e30613;">CONDIS 3416</h2>
+    <h2 style="color:#e30613; margin-bottom:5px;">CONDIS 3416</h2>
     <div id="interactive" class="viewport"></div>
-    <button class="btn-scan" onclick="startScanner()">START CAMERA</button>
-    <p id="prod-id">Scan any product...</p>
+    <button class="btn-scan" onclick="startScanner()">OPEN CAMERA</button>
+    
+    <p id="prod-id" style="font-weight:bold; margin: 10px 0;">Scan a product...</p>
     <div class="qty-box" id="prod-qty">0</div>
-    <div>
-        <button class="btn-minus" onclick="changeQty(-1)">-1</button>
-        <button class="btn-plus" onclick="changeQty(1)">+1</button>
+    
+    <button class="btn-minus" onclick="changeQty(-1)">-1</button>
+    <button class="btn-plus" onclick="changeQty(1)">+1</button>
+    
+    <div id="status">Ready</div>
+
+    <button class="btn-list" onclick="loadAllStock()">VIEW TOTAL INVENTORY</button>
+
+    <div id="stock-list-container">
+        <table id="stock-table">
+            <thead><tr><th>Barcode</th><th>Stock Count</th></tr></thead>
+            <tbody id="stock-body"></tbody>
+        </table>
     </div>
-    <p id="status">Waiting...</p>
 </div>
 
 <script>
-    // I added your specific Upstash link from your screenshot!
+    // I HAVE ADDED YOUR SECRET TOKEN BELOW
     const url = "https://epic-dory-42115.upstash.io"; 
-    
-    // ACTION REQUIRED: Go to your Upstash screen and click the "TOKEN" button 
-    // to copy your password, then paste it between the quotes below:
-    const token = "AaSDAAIncDIwYzlhNWU0ODUzZmQ0OWY0OGVlODE1NTg5NWRjOWIzNXAyNDIxMTU";
+    const token = "AaSDAAIncDIwYzlhNWU0ODUzZmQ0OWY0OGVlODE1NTg5NWRjOWIzNXAyNDIxMTU"; 
 
     let currentBC = null;
+
     function startScanner() {
+        document.getElementById('status').innerText = "Camera Starting...";
         Quagga.init({
-            inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#interactive'), constraints: { facingMode: "environment" } },
-            decoder: { readers: ["ean_reader", "upc_reader", "code_128_reader"] }
-        }, (err) => { if (err) return alert("Camera Error"); Quagga.start(); });
+            inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#interactive'), 
+                constraints: { width: 640, height: 480, facingMode: "environment" } },
+            decoder: { readers: ["ean_reader", "upc_reader", "ean_8_reader"] },
+            locate: true
+        }, (err) => { 
+            if (err) { document.getElementById('status').innerText = "Camera Error"; return; }
+            Quagga.start(); 
+            document.getElementById('status').innerText = "Camera Active";
+        });
     }
+
     Quagga.onDetected((data) => {
         let code = data.codeResult.code;
         if (currentBC === code) return;
         currentBC = code;
-        document.getElementById('prod-id').innerText = "BARCODE: " + code;
+        document.getElementById('prod-id').innerText = "BARCODE: " + currentBC;
+        if (navigator.vibrate) navigator.vibrate(100);
         updateUI('get');
     });
+
     async function updateUI(mode, val = 0) {
         if (!currentBC) return;
-        document.getElementById('status').innerText = "Syncing...";
+        document.getElementById('status').innerText = "Syncing with Cloud...";
         try {
             let endpoint = mode === 'get' ? `${url}/get/${currentBC}` : `${url}/incrby/${currentBC}/${val}`;
             const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
             const data = await res.json();
             document.getElementById('prod-qty').innerText = data.result || 0;
-            document.getElementById('status').innerText = "✓ Synced Online";
-        } catch (e) { document.getElementById('status').innerText = "Connection Error"; }
+            document.getElementById('status').innerText = "✓ Updated";
+            loadAllStock(); 
+        } catch (e) { document.getElementById('status').innerText = "Sync Error!"; }
     }
-    function changeQty(n) { if (!currentBC) alert("Scan first!"); else updateUI('update', n); }
+
+    async function loadAllStock() {
+        try {
+            const resKeys = await fetch(`${url}/keys/*`, { headers: { Authorization: `Bearer ${token}` } });
+            const keysData = await resKeys.json();
+            const keys = keysData.result || [];
+            
+            let tableRows = "";
+            for (let k of keys) {
+                const resVal = await fetch(`${url}/get/${k}`, { headers: { Authorization: `Bearer ${token}` } });
+                const valData = await resVal.json();
+                tableRows += `<tr><td>${k}</td><td>${valData.result}</td></tr>`;
+            }
+            document.getElementById('stock-body').innerHTML = tableRows || "<tr><td colspan='2'>No items yet</td></tr>";
+        } catch (e) { console.log("List error"); }
+    }
+
+    function changeQty(n) { 
+        if (!currentBC) alert("Please scan a barcode first!"); 
+        else updateUI('update', n); 
+    }
 </script>
 </body>
 </html>
