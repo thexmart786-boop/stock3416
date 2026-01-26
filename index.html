@@ -3,117 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Condis 3416 - Dual Stock</title>
+    <title>Condis 3416 - Pro Scanner</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f0f2f5; padding: 10px; margin: 0; }
-        .box-container { background: white; padding: 20px; border-radius: 15px; max-width: 450px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        body { font-family: sans-serif; text-align: center; background: #e30613; padding: 10px; margin: 0; }
+        .box { background: white; padding: 15px; border-radius: 20px; max-width: 450px; margin: auto; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
         
-        #interactive.viewport { width: 100%; height: 180px; background: #000; border-radius: 12px; overflow: hidden; position: relative; }
-        #interactive.viewport::after { content: ""; position: absolute; top: 20%; left: 10%; right: 10%; bottom: 20%; border: 2px solid #005696; pointer-events: none; }
+        /* The Pro Scanner Viewport */
+        #interactive.viewport { 
+            width: 100%; height: 250px; background: #000; border-radius: 10px; 
+            overflow: hidden; position: relative; margin-bottom: 10px; 
+        }
+        
+        /* The Red Target Box */
+        #interactive.viewport::after { 
+            content: ""; position: absolute; top: 20%; left: 10%; right: 10%; bottom: 20%; 
+            border: 3px solid #e30613; border-radius: 5px; pointer-events: none;
+            box-shadow: 0 0 0 1000px rgba(0,0,0,0.3); /* Darkens the outside of the box */
+        }
+
         video { width: 100%; height: 100%; object-fit: cover; }
-
-        .qty-box { font-size: 80px; font-weight: bold; margin: 5px 0; color: #005696; }
-        .label-text { font-size: 18px; color: #666; font-weight: bold; text-transform: uppercase; }
+        .qty-box { font-size: 50px; font-weight: bold; color: #005696; margin: 5px 0; }
+        button { padding: 15px; font-size: 16px; border-radius: 10px; border: none; cursor: pointer; font-weight: bold; margin: 5px; }
+        .btn-plus { background: #005696; color: white; width: 40%; }
+        .btn-minus { background: #666; color: white; width: 40%; }
+        .btn-scan { background: #e30613; color: white; width: 95%; font-size: 20px; }
+        .btn-list { background: #222; color: white; width: 95%; margin-top: 15px; }
         
-        .control-panel { display: flex; align-items: center; justify-content: space-between; margin-top: 20px; gap: 10px; }
-        .side-btn { background: #005696; color: white; border: none; border-radius: 15px; width: 75px; height: 75px; font-size: 40px; cursor: pointer; }
-        
-        .center-selector { flex-grow: 1; display: flex; flex-direction: column; gap: 8px; }
-        .type-btn { padding: 15px; border: 2px solid #ddd; border-radius: 10px; background: white; font-weight: bold; color: #888; cursor: pointer; font-size: 16px; }
-        .type-btn.active { border-color: #005696; background: #eef6fc; color: #005696; border-width: 3px; }
-
-        input[type="number"] { padding: 12px; width: 90%; border-radius: 8px; border: 1px solid #ccc; margin-top: 15px; font-size: 16px; }
+        table { width: 100%; margin-top: 20px; border-collapse: collapse; font-size: 14px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background: #f4f4f4; }
+        #status { font-weight: bold; color: #00a859; height: 20px; margin-top: 5px; }
     </style>
 </head>
 <body>
-<div class="box-container">
-    <h2 style="color:#005696; margin:0 0 10px 0;">CONDIS 3416</h2>
-    
+<div class="box">
+    <h2 style="color:#e30613; margin:0 0 10px 0;">CONDIS 3416 PRO</h2>
     <div id="interactive" class="viewport"></div>
-    <input type="number" id="manual-bc" placeholder="Enter Barcode..." onchange="handleManual()">
-
-    <p id="prod-id" style="margin-top:15px; color:#888;">Scanning Ready</p>
-    <div class="label-text" id="current-mode-label">ITEMS</div>
+    <button class="btn-scan" onclick="startScanner()">START TURBO SCAN</button>
+    
+    <p id="prod-id" style="font-weight:bold;">Ready to sync...</p>
     <div class="qty-box" id="prod-qty">0</div>
     
-    <div class="control-panel">
-        <button class="side-btn" onclick="adjust(-1)">−</button>
-        
-        <div class="center-selector">
-            <button id="btnBox" class="type-btn" onclick="setTarget('box')">📦 BOX</button>
-            <button id="btnItem" class="type-btn active" onclick="setTarget('item')">🛍️ ITEMS</button>
-        </div>
-        
-        <button class="side-btn" onclick="adjust(1)">+</button>
-    </div>
+    <button class="btn-minus" onclick="changeQty(-1)">-1</button>
+    <button class="btn-plus" onclick="changeQty(1)">+1</button>
+    
+    <div id="status">Waiting for Scan</div>
 
-    <button style="width:100%; background:#333; color:white; padding:15px; border-radius:10px; margin-top:25px; border:none; font-weight:bold;" onclick="loadAllStock()">VIEW TOTAL INVENTORY</button>
-    <div id="stock-body" style="margin-top:15px; text-align: left;"></div>
+    <button class="btn-list" onclick="loadAllStock()">VIEW ALL STOCK</button>
+
+    <div style="max-height: 200px; overflow-y: auto;">
+        <table>
+            <thead><tr><th>Barcode</th><th>Stock</th></tr></thead>
+            <tbody id="stock-body"></tbody>
+        </table>
+    </div>
 </div>
 
 <script>
     const url = "https://epic-dory-42115.upstash.io"; 
     const token = "AaSDAAIncDIwYzlhNWU0ODUzZmQ0OWY0OGVlODE1NTg5NWRjOWIzNXAyNDIxMTU"; 
+
     let currentBC = null;
-    let mode = 'item'; // Default mode
-
-    function setTarget(t) {
-        mode = t;
-        document.getElementById('btnBox').classList.toggle('active', t === 'box');
-        document.getElementById('btnItem').classList.toggle('active', t === 'item');
-        document.getElementById('current-mode-label').innerText = t === 'box' ? "BOXES" : "ITEMS";
-        if(currentBC) updateUI('get');
-    }
-
-    function adjust(val) {
-        if (!currentBC) return alert("Scan first!");
-        updateUI('update', val);
-    }
+    
+    // THE SOUND: Creates a "Beep" sound
+    const beep = new Audio("https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3");
 
     function startScanner() {
         Quagga.init({
-            inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#interactive'), constraints: { facingMode: "environment" } },
-            decoder: { readers: ["ean_reader", "upc_reader", "ean_8_reader"] }
-        }, (err) => { Quagga.start(); });
-    }
-    startScanner();
-
-    function handleManual() {
-        currentBC = document.getElementById('manual-bc').value;
-        document.getElementById('prod-id').innerText = "ID: " + currentBC;
-        updateUI('get');
+            inputStream: { 
+                name: "Live", 
+                type: "LiveStream", 
+                target: document.querySelector('#interactive'), 
+                constraints: { width: 1280, height: 720, facingMode: "environment" },
+                area: { top: "20%", right: "10%", left: "10%", bottom: "20%" }
+            },
+            locate: true,
+            frequency: 10, // Scans faster
+            decoder: { readers: ["ean_reader", "upc_reader", "ean_8_reader"] },
+            numOfWorkers: 4
+        }, (err) => { 
+            if (err) return alert("Camera Error"); 
+            Quagga.start(); 
+            document.getElementById('status').innerText = "SCANNER ACTIVE";
+        });
     }
 
     Quagga.onDetected((data) => {
-        if (currentBC === data.codeResult.code) return;
-        currentBC = data.codeResult.code;
-        document.getElementById('prod-id').innerText = "ID: " + currentBC;
+        let code = data.codeResult.code;
+        if (currentBC === code) return;
+        
+        // SUCCESS: Play Beep and Vibrate
+        beep.play();
+        if (navigator.vibrate) navigator.vibrate(100);
+        
+        currentBC = code;
+        document.getElementById('prod-id').innerText = "BARCODE: " + currentBC;
         updateUI('get');
     });
 
-    async function updateUI(action, val = 0) {
-        // We create a unique key for boxes and items, e.g., "84123-box"
-        const storageKey = `${currentBC}-${mode}`;
-        let endpoint = action === 'get' ? `${url}/get/${storageKey}` : `${url}/incrby/${storageKey}/${val}`;
-        
+    async function updateUI(mode, val = 0) {
+        if (!currentBC) return;
+        document.getElementById('status').innerText = "Syncing...";
         try {
+            let endpoint = mode === 'get' ? `${url}/get/${currentBC}` : `${url}/incrby/${currentBC}/${val}`;
             const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
             const data = await res.json();
             document.getElementById('prod-qty').innerText = data.result || 0;
-        } catch (e) { console.error("Cloud Error"); }
+            document.getElementById('status').innerText = "✓ SYNCED";
+            loadAllStock();
+        } catch (e) { document.getElementById('status').innerText = "CLOUD ERROR"; }
     }
 
     async function loadAllStock() {
-        const res = await fetch(`${url}/keys/*`, { headers: { Authorization: `Bearer ${token}` } });
-        const keys = (await res.json()).result || [];
-        let html = "<table style='width:100%; font-size:14px;'><tr><th>Product-Type</th><th>Qty</th></tr>";
-        for (let k of keys) {
-            const v = await (await fetch(`${url}/get/${k}`, { headers: { Authorization: `Bearer ${token}` } })).json();
-            html += `<tr style='border-bottom:1px solid #eee;'><td>${k}</td><td><b>${v.result}</b></td></tr>`;
-        }
-        document.getElementById('stock-body').innerHTML = html + "</table>";
+        try {
+            const resKeys = await fetch(`${url}/keys/*`, { headers: { Authorization: `Bearer ${token}` } });
+            const keysData = await resKeys.json();
+            const keys = keysData.result || [];
+            let html = "";
+            for (let k of keys) {
+                const resVal = await fetch(`${url}/get/${k}`, { headers: { Authorization: `Bearer ${token}` } });
+                const v = await resVal.json();
+                html += `<tr><td>${k}</td><td>${v.result}</td></tr>`;
+            }
+            document.getElementById('stock-body').innerHTML = html;
+        } catch (e) {}
     }
+
+    function changeQty(n) { if (!currentBC) alert("Scan first!"); else updateUI('update', n); }
 </script>
 </body>
 </html>
