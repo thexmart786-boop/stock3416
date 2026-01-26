@@ -3,93 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Condis 3416 - Shared Stock</title>
+    <title>Condis 3416 - Pro Scanner</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         body { font-family: sans-serif; text-align: center; background: #e30613; padding: 10px; margin: 0; }
-        .box { background: white; padding: 15px; border-radius: 20px; max-width: 450px; margin: auto; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
-        #interactive.viewport { width: 100%; height: 200px; background: #000; border-radius: 10px; overflow: hidden; position: relative; margin-bottom: 10px; }
-        #interactive.viewport::after { content: ""; position: absolute; top: 25%; left: 10%; right: 10%; bottom: 25%; border: 2px solid red; pointer-events: none; }
+        .box { background: white; padding: 15px; border-radius: 20px; max-width: 450px; margin: auto; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+        
+        /* The Pro Scanner Viewport */
+        #interactive.viewport { 
+            width: 100%; height: 250px; background: #000; border-radius: 10px; 
+            overflow: hidden; position: relative; margin-bottom: 10px; 
+        }
+        
+        /* The Red Target Box */
+        #interactive.viewport::after { 
+            content: ""; position: absolute; top: 20%; left: 10%; right: 10%; bottom: 20%; 
+            border: 3px solid #e30613; border-radius: 5px; pointer-events: none;
+            box-shadow: 0 0 0 1000px rgba(0,0,0,0.3); /* Darkens the outside of the box */
+        }
+
         video { width: 100%; height: 100%; object-fit: cover; }
-        .qty-box { font-size: 50px; font-weight: bold; color: #005696; margin: 10px 0; }
-        button { padding: 15px; font-size: 16px; border-radius: 10px; border: none; cursor: pointer; font-weight: bold; margin: 5px; transition: 0.2s; }
-        button:active { opacity: 0.7; }
+        .qty-box { font-size: 50px; font-weight: bold; color: #005696; margin: 5px 0; }
+        button { padding: 15px; font-size: 16px; border-radius: 10px; border: none; cursor: pointer; font-weight: bold; margin: 5px; }
         .btn-plus { background: #005696; color: white; width: 40%; }
         .btn-minus { background: #666; color: white; width: 40%; }
-        .btn-scan { background: #e30613; color: white; width: 95%; }
+        .btn-scan { background: #e30613; color: white; width: 95%; font-size: 20px; }
         .btn-list { background: #222; color: white; width: 95%; margin-top: 15px; }
-        #stock-list-container { margin-top: 20px; max-height: 300px; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        
+        table { width: 100%; margin-top: 20px; border-collapse: collapse; font-size: 14px; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background: #f4f4f4; position: sticky; top: 0; }
-        #status { font-size: 12px; color: #666; margin-top: 5px; }
+        th { background: #f4f4f4; }
+        #status { font-weight: bold; color: #00a859; height: 20px; margin-top: 5px; }
     </style>
 </head>
 <body>
 <div class="box">
-    <h2 style="color:#e30613; margin-bottom:5px;">CONDIS 3416</h2>
+    <h2 style="color:#e30613; margin:0 0 10px 0;">CONDIS 3416 PRO</h2>
     <div id="interactive" class="viewport"></div>
-    <button class="btn-scan" onclick="startScanner()">OPEN CAMERA</button>
+    <button class="btn-scan" onclick="startScanner()">START TURBO SCAN</button>
     
-    <p id="prod-id" style="font-weight:bold; margin: 10px 0;">Scan a product...</p>
+    <p id="prod-id" style="font-weight:bold;">Ready to sync...</p>
     <div class="qty-box" id="prod-qty">0</div>
     
     <button class="btn-minus" onclick="changeQty(-1)">-1</button>
     <button class="btn-plus" onclick="changeQty(1)">+1</button>
     
-    <div id="status">Ready</div>
+    <div id="status">Waiting for Scan</div>
 
-    <button class="btn-list" onclick="loadAllStock()">VIEW TOTAL INVENTORY</button>
+    <button class="btn-list" onclick="loadAllStock()">VIEW ALL STOCK</button>
 
-    <div id="stock-list-container">
-        <table id="stock-table">
-            <thead><tr><th>Barcode</th><th>Stock Count</th></tr></thead>
+    <div style="max-height: 200px; overflow-y: auto;">
+        <table>
+            <thead><tr><th>Barcode</th><th>Stock</th></tr></thead>
             <tbody id="stock-body"></tbody>
         </table>
     </div>
 </div>
 
 <script>
-    // I HAVE ADDED YOUR SECRET TOKEN BELOW
     const url = "https://epic-dory-42115.upstash.io"; 
     const token = "AaSDAAIncDIwYzlhNWU0ODUzZmQ0OWY0OGVlODE1NTg5NWRjOWIzNXAyNDIxMTU"; 
 
     let currentBC = null;
+    
+    // THE SOUND: Creates a "Beep" sound
+    const beep = new Audio("https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3");
 
     function startScanner() {
-        document.getElementById('status').innerText = "Camera Starting...";
         Quagga.init({
-            inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#interactive'), 
-                constraints: { width: 640, height: 480, facingMode: "environment" } },
+            inputStream: { 
+                name: "Live", 
+                type: "LiveStream", 
+                target: document.querySelector('#interactive'), 
+                constraints: { width: 1280, height: 720, facingMode: "environment" },
+                area: { top: "20%", right: "10%", left: "10%", bottom: "20%" }
+            },
+            locate: true,
+            frequency: 10, // Scans faster
             decoder: { readers: ["ean_reader", "upc_reader", "ean_8_reader"] },
-            locate: true
+            numOfWorkers: 4
         }, (err) => { 
-            if (err) { document.getElementById('status').innerText = "Camera Error"; return; }
+            if (err) return alert("Camera Error"); 
             Quagga.start(); 
-            document.getElementById('status').innerText = "Camera Active";
+            document.getElementById('status').innerText = "SCANNER ACTIVE";
         });
     }
 
     Quagga.onDetected((data) => {
         let code = data.codeResult.code;
         if (currentBC === code) return;
+        
+        // SUCCESS: Play Beep and Vibrate
+        beep.play();
+        if (navigator.vibrate) navigator.vibrate(100);
+        
         currentBC = code;
         document.getElementById('prod-id').innerText = "BARCODE: " + currentBC;
-        if (navigator.vibrate) navigator.vibrate(100);
         updateUI('get');
     });
 
     async function updateUI(mode, val = 0) {
         if (!currentBC) return;
-        document.getElementById('status').innerText = "Syncing with Cloud...";
+        document.getElementById('status').innerText = "Syncing...";
         try {
             let endpoint = mode === 'get' ? `${url}/get/${currentBC}` : `${url}/incrby/${currentBC}/${val}`;
             const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
             const data = await res.json();
             document.getElementById('prod-qty').innerText = data.result || 0;
-            document.getElementById('status').innerText = "✓ Updated";
-            loadAllStock(); 
-        } catch (e) { document.getElementById('status').innerText = "Sync Error!"; }
+            document.getElementById('status').innerText = "✓ SYNCED";
+            loadAllStock();
+        } catch (e) { document.getElementById('status').innerText = "CLOUD ERROR"; }
     }
 
     async function loadAllStock() {
@@ -97,21 +120,17 @@
             const resKeys = await fetch(`${url}/keys/*`, { headers: { Authorization: `Bearer ${token}` } });
             const keysData = await resKeys.json();
             const keys = keysData.result || [];
-            
-            let tableRows = "";
+            let html = "";
             for (let k of keys) {
                 const resVal = await fetch(`${url}/get/${k}`, { headers: { Authorization: `Bearer ${token}` } });
-                const valData = await resVal.json();
-                tableRows += `<tr><td>${k}</td><td>${valData.result}</td></tr>`;
+                const v = await resVal.json();
+                html += `<tr><td>${k}</td><td>${v.result}</td></tr>`;
             }
-            document.getElementById('stock-body').innerHTML = tableRows || "<tr><td colspan='2'>No items yet</td></tr>";
-        } catch (e) { console.log("List error"); }
+            document.getElementById('stock-body').innerHTML = html;
+        } catch (e) {}
     }
 
-    function changeQty(n) { 
-        if (!currentBC) alert("Please scan a barcode first!"); 
-        else updateUI('update', n); 
-    }
+    function changeQty(n) { if (!currentBC) alert("Scan first!"); else updateUI('update', n); }
 </script>
 </body>
 </html>
