@@ -3,145 +3,204 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Condis 3416 - Fixed</title>
+    <title>Condis 3416 - Master</title>
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <style>
         :root { --condis-blue: #005696; --condis-red: #e30613; }
-        body { font-family: sans-serif; margin: 0; background: #f4f7f9; overflow-x: hidden; }
+        body { font-family: sans-serif; margin: 0; background: #f4f7f9; touch-action: manipulation; }
         
-        /* HEADER */
         header { background: var(--condis-blue); color: white; padding: 15px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 1000; }
-        
-        /* MENU - SIMPLIFIED TO WORK ON ALL PHONES */
-        .sidenav { height: 100%; width: 0; position: fixed; z-index: 2000; top: 0; left: 0; background: #111; overflow-x: hidden; transition: 0.2s; }
-        .sidenav a { padding: 20px; text-decoration: none; font-size: 18px; color: white; display: block; border-bottom: 1px solid #333; }
+        .menu-btn { font-size: 30px; cursor: pointer; padding: 0 10px; }
 
-        /* BUTTONS - BIGGER TOUCH AREA */
-        .page { display: none; padding: 20px; text-align: center; }
+        .sidenav { height: 100%; width: 0; position: fixed; z-index: 2000; top: 0; left: 0; background: #111; overflow-x: hidden; transition: 0.3s; }
+        .sidenav a { padding: 20px; text-decoration: none; font-size: 20px; color: #bbb; display: block; border-bottom: 1px solid #222; }
+
+        .page { display: none; padding: 15px; text-align: center; }
         .active-page { display: block; }
-        
-        .home-card { background: white; padding: 40px 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: 30px; }
-        .btn-main { width: 100%; padding: 20px; background: var(--condis-red); color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 20px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 
-        /* SCANNER */
-        #video-container { width: 100%; height: 250px; background: #000; border-radius: 15px; overflow: hidden; margin-bottom: 10px; }
+        .home-card { background: white; padding: 40px 20px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); margin-top: 40px; }
+        .btn-start { width: 100%; padding: 20px; background: var(--condis-red); color: white; border: none; border-radius: 15px; font-weight: bold; font-size: 18px; cursor: pointer; }
+
+        #video-container { width: 100%; height: 260px; background: #000; border-radius: 20px; overflow: hidden; position: relative; }
         video { width: 100%; height: 100%; object-fit: cover; }
         
-        .qty-box { background: white; padding: 20px; border-radius: 20px; margin-top: 10px; }
-        .btn-qty { width: 80px; height: 80px; border-radius: 50%; border: none; font-size: 30px; background: var(--condis-blue); color: white; margin: 0 10px; }
+        .photo-circle { width: 110px; height: 110px; background: white; border-radius: 50%; margin: -55px auto 10px; border: 4px solid var(--condis-blue); overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .photo-circle img { width: 100%; height: 100%; object-fit: cover; }
+
+        .qty-box { background: white; padding: 20px; border-radius: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); margin-top: 10px; }
+        .btn-qty { width: 75px; height: 75px; border-radius: 50%; border: none; font-size: 35px; background: var(--condis-blue); color: white; margin: 0 10px; }
+
+        .stock-card { background: white; display: flex; align-items: center; padding: 10px; margin-bottom: 8px; border-radius: 12px; border: 1px solid #eee; }
+        .thumb { width: 50px; height: 50px; border-radius: 8px; margin-right: 12px; object-fit: cover; background: #f0f0f0; }
     </style>
 </head>
 <body>
 
 <div id="mySidenav" class="sidenav">
-  <a href="javascript:void(0)" onclick="showPage('home')">🏠 Home</a>
-  <a href="javascript:void(0)" onclick="showPage('scan')">📸 Scanner</a>
-  <a href="javascript:void(0)" onclick="showPage('stock')">📦 Stock List</a>
-  <a href="javascript:void(0)" onclick="closeNav()" style="color:red">Close ×</a>
+  <a href="#" onclick="showPage('home')">🏠 Home</a>
+  <a href="#" onclick="showPage('scan')">📸 Scanner</a>
+  <a href="#" onclick="showPage('stock')">📦 All Stock</a>
+  <a href="#" onclick="closeNav()" style="color:var(--condis-red)">Close ×</a>
 </div>
 
 <header>
-    <div onclick="openNav()" style="padding: 5px 15px; font-size: 30px; cursor: pointer;">☰</div>
+    <div class="menu-btn" onclick="openNav()">☰</div>
     <b>CONDIS 3416</b>
-    <div style="width:50px"></div>
+    <div style="width:40px"></div>
 </header>
 
 <div id="home" class="page active-page">
     <div class="home-card">
-        <p style="color:#666; margin-bottom:5px;">Database Items</p>
-        <h1 id="total-items" style="font-size: 60px; margin: 0; color: var(--condis-blue);">...</h1>
-        <br>
-        <button class="btn-main" onclick="showPage('scan')">START SCANNING</button>
+        <p style="color:#888;">Database Items</p>
+        <h1 id="total-items" style="font-size: 70px; margin: 10px 0; color: var(--condis-blue);">...</h1>
+        <button class="btn-start" onclick="unlockAndStart()">START SCANNING</button>
     </div>
 </div>
 
 <div id="scan" class="page">
     <div id="video-container"><video id="video"></video></div>
-    <div id="bc-res" style="background:#eee; padding:5px; margin-bottom:10px; border-radius:5px;">Waiting for scan...</div>
+    <div class="photo-circle" onclick="document.getElementById('file-input').click()">
+        <img id="product-photo" style="display:none;">
+        <span id="photo-label" style="font-size:11px; color:#999;">ADD PHOTO</span>
+    </div>
+    <input type="file" id="file-input" accept="image/*" capture="environment" onchange="uploadPhoto(event)" style="display:none;">
     
     <div class="qty-box">
-        <h1 id="qty-val" style="font-size: 70px; margin: 0;">0</h1>
-        <div style="margin-top:20px;">
-            <button class="btn-qty" onclick="sync('update', -1)">-</button>
-            <button class="btn-qty" onclick="sync('update', 1)">+</button>
-        </div>
+        <code id="bc-res" style="color:#aaa;">READY</code>
+        <h1 id="qty-val" style="font-size: 80px; margin: 5px 0;">0</h1>
+        <button class="btn-qty" onclick="sync('update', -1)">-</button>
+        <button class="btn-qty" onclick="sync('update', 1)">+</button>
     </div>
-    <button onclick="cycleCamera()" style="margin-top:20px; background:#444; color:white; border:none; padding:10px 20px; border-radius:20px;">🔄 Switch Lens</button>
+    <button onclick="cycleCamera()" style="margin-top:20px; background:#444; color:white; border:none; padding:12px 20px; border-radius:30px;">🔄 SWITCH CAMERA</button>
 </div>
 
 <div id="stock" class="page">
-    <div id="stock-list">Loading...</div>
+    <div id="stock-list" style="text-align: left;">Loading...</div>
 </div>
 
 <script>
-    // 1. DATABASE CONFIG
     const url = "https://epic-dory-42115.upstash.io"; 
     const token = "AaSDAAIncDIwYzlhNWU0ODUzZmQ0OWY0OGVlODE1NTg5NWRjOWIzNXAyNDIxMTU"; 
+    const beep = new Audio("https://www.soundjay.com/buttons/beep-07a.mp3");
+    const codeReader = new ZXing.BrowserMultiFormatReader();
+    let activeBC = null;
+    let selectedDeviceId;
+    let videoDevices = [];
 
-    // 2. MENU FUNCTIONS (Pure JS, no database needed)
     function openNav() { document.getElementById("mySidenav").style.width = "250px"; }
     function closeNav() { document.getElementById("mySidenav").style.width = "0"; }
 
+    function unlockAndStart() {
+        beep.play().catch(() => {}); // Unlocks sound for iPhone/Samsung
+        showPage('scan');
+    }
+
     function showPage(p) {
-        // Hide all pages
-        const pages = document.getElementsByClassName('page');
-        for(let i=0; i<pages.length; i++) { pages[i].style.display = 'none'; }
-        
-        // Show selected page
+        document.querySelectorAll('.page').forEach(page => page.style.display = 'none');
         document.getElementById(p).style.display = 'block';
         closeNav();
-
-        // Trigger actions
         if(p === 'scan') initCamera();
-        else if (p === 'home') loadStats();
-        else if (p === 'stock') loadStock();
+        else if(p === 'home') loadStats();
+        else if(p === 'stock') loadStock();
         else codeReader.reset();
     }
 
-    // 3. SCANNER LOGIC
-    const codeReader = new ZXing.BrowserMultiFormatReader();
-    let selectedDeviceId;
-    let activeBC = null;
-
     async function initCamera() {
         try {
-            const devices = await codeReader.listVideoInputDevices();
-            selectedDeviceId = devices[devices.length - 1].deviceId;
+            videoDevices = await codeReader.listVideoInputDevices();
+            selectedDeviceId = videoDevices[videoDevices.length - 1].deviceId;
             codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result) => {
-                if(result) {
+                if(result && result.text !== activeBC) {
                     activeBC = result.text;
-                    document.getElementById('bc-res').innerText = "Barcode: " + activeBC;
+                    document.getElementById('bc-res').innerText = activeBC;
+                    beep.play().catch(() => {});
                     sync('get');
                 }
             });
-        } catch(e) { alert("Camera Error: " + e); }
+        } catch(e) { console.error(e); }
     }
 
-    // 4. DATABASE SYNC
     async function sync(type, val = 0) {
         if(!activeBC) return;
         let endpoint = type === 'get' ? `${url}/get/${activeBC}` : `${url}/incrby/${activeBC}/${val}`;
-        try {
-            const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
-            const data = await res.json();
-            document.getElementById('qty-val').innerText = data.result || 0;
-        } catch(e) { console.log("DB Error"); }
+        const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        document.getElementById('qty-val').innerText = data.result || 0;
+        
+        // Fetch Photo
+        const imgRes = await fetch(`${url}/get/img-${activeBC}`, { headers: { Authorization: `Bearer ${token}` } });
+        const imgData = await imgRes.json();
+        const imgEl = document.getElementById('product-photo');
+        const lblEl = document.getElementById('photo-label');
+        if(imgData.result) {
+            imgEl.src = imgData.result; imgEl.style.display = 'block'; lblEl.style.display = 'none';
+        } else {
+            imgEl.style.display = 'none'; lblEl.style.display = 'block';
+        }
+    }
+
+    function uploadPhoto(event) {
+        const file = event.target.files[0];
+        if (!file || !activeBC) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 100; canvas.height = 100;
+                canvas.getContext('2d').drawImage(img, 0, 0, 100, 100);
+                const tinyData = canvas.toDataURL('image/jpeg', 0.5);
+                fetch(`${url}/set/img-${activeBC}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: tinyData });
+                document.getElementById('product-photo').src = tinyData;
+                document.getElementById('product-photo').style.display = 'block';
+                document.getElementById('photo-label').style.display = 'none';
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
     }
 
     async function loadStats() {
-        try {
-            const res = await fetch(`${url}/keys/*`, { headers: { Authorization: `Bearer ${token}` } });
-            const keys = (await res.json()).result || [];
-            document.getElementById('total-items').innerText = keys.length;
-        } catch(e) { document.getElementById('total-items').innerText = "0"; }
+        const res = await fetch(`${url}/keys/*`, { headers: { Authorization: `Bearer ${token}` } });
+        const keys = (await res.json()).result || [];
+        document.getElementById('total-items').innerText = keys.filter(k => !k.startsWith('img-')).length;
     }
 
     async function loadStock() {
-        document.getElementById('stock-list').innerText = "Syncing...";
-        // Simple stock list logic here
+        document.getElementById('stock-list').innerHTML = "Fetching database...";
+        const res = await fetch(`${url}/keys/*`, { headers: { Authorization: `Bearer ${token}` } });
+        const keys = ((await res.json()).result || []).filter(k => !k.startsWith('img-'));
+        let html = "";
+        for (let k of keys) {
+            const vRes = await fetch(`${url}/get/${k}`, { headers: { Authorization: `Bearer ${token}` } });
+            const vData = await vRes.json();
+            const iRes = await fetch(`${url}/get/img-${k}`, { headers: { Authorization: `Bearer ${token}` } });
+            const iData = await iRes.json();
+            const photo = iData.result || "https://via.placeholder.com/50?text=No+Pic";
+            html += `<div class="stock-card">
+                <img class="thumb" src="${photo}">
+                <div style="flex-grow:1"><b>${k}</b><br><small>Qty: ${vData.result}</small></div>
+                <button onclick="deleteItem('${k}')" style="background:none; border:none; color:red; font-size:18px;">🗑️</button>
+            </div>`;
+        }
+        document.getElementById('stock-list').innerHTML = html || "Empty";
     }
 
-    // Load initial stats
+    async function deleteItem(k) {
+        if(confirm("Delete item?")) {
+            await fetch(`${url}/del/${k}`, { headers: { Authorization: `Bearer ${token}` } });
+            await fetch(`${url}/del/img-${k}`, { headers: { Authorization: `Bearer ${token}` } });
+            loadStock();
+        }
+    }
+
+    async function cycleCamera() {
+        let currentIndex = videoDevices.findIndex(d => d.deviceId === selectedDeviceId);
+        selectedDeviceId = videoDevices[(currentIndex + 1) % videoDevices.length].deviceId;
+        codeReader.reset();
+        initCamera();
+    }
+
     loadStats();
 </script>
 </body>
