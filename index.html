@@ -3,53 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Condis 3416 - Reset</title>
+    <title>Condis 3416 - Fix</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
-        :root { --condis-blue: #005696; --condis-red: #e30613; }
-        body { font-family: sans-serif; margin: 0; background: #f4f7f9; text-align: center; }
-        header { background: var(--condis-blue); color: white; padding: 15px; font-weight: bold; }
+        body { font-family: sans-serif; margin: 0; background: #000; color: white; text-align: center; }
+        header { background: #005696; padding: 15px; font-weight: bold; }
         
-        /* SCANNER WINDOW */
-        #interactive.viewport { width: 100%; height: 250px; background: #000; position: relative; overflow: hidden; }
+        /* THE VIEWER */
+        #interactive.viewport { 
+            width: 100vw; height: 60vh; background: #222; 
+            position: relative; overflow: hidden;
+        }
         video { width: 100%; height: 100%; object-fit: cover; }
         
-        /* VISUAL SCAN ZONE */
-        .scan-zone { position: absolute; top: 20%; left: 10%; width: 80%; height: 60%; border: 2px solid rgba(255,255,255,0.3); border-radius: 10px; pointer-events: none; }
-        .scan-line { position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: red; box-shadow: 0 0 10px red; animation: move 2s infinite; }
-        @keyframes move { 0%, 100% { top: 10%; } 50% { top: 90%; } }
-
-        .card { background: white; padding: 20px; margin: 15px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .qty-text { font-size: 80px; font-weight: bold; color: var(--condis-blue); margin: 10px 0; }
+        .panel { background: white; color: #333; padding: 20px; border-top-left-radius: 20px; border-top-right-radius: 20px; min-height: 40vh; position: relative; margin-top: -20px; }
+        .bc-tag { background: #eee; padding: 5px 10px; border-radius: 5px; font-family: monospace; }
+        .qty { font-size: 80px; font-weight: bold; color: #005696; margin: 10px 0; }
         
-        button { padding: 18px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-main { background: var(--condis-red); color: white; width: 90%; font-size: 18px; margin-bottom: 10px; }
-        .btn-side { background: var(--condis-blue); color: white; width: 80px; height: 80px; font-size: 40px; border-radius: 50%; }
+        button { border: none; font-weight: bold; cursor: pointer; }
+        .btn-start { background: #e30613; color: white; width: 80%; padding: 15px; border-radius: 10px; font-size: 18px; margin-bottom: 10px; }
+        .btn-qty { background: #005696; color: white; width: 70px; height: 70px; border-radius: 50%; font-size: 30px; }
         
-        #status-indicator { font-size: 12px; padding: 5px; color: #666; }
+        #error-log { font-size: 12px; color: red; margin: 5px; background: rgba(255,0,0,0.1); }
     </style>
 </head>
 <body>
 
-<header>CONDIS 3416 - SYSTEM RESET</header>
+<header>CONDIS 3416 - REPAIR MODE</header>
 
-<div id="interactive" class="viewport">
-    <div class="scan-zone">
-        <div class="scan-line"></div>
-    </div>
-</div>
+<div id="interactive" class="viewport"></div>
+<div id="error-log"></div>
 
-<div id="status-indicator">Status: Waiting for user...</div>
-
-<button class="btn-main" onclick="startScanner()">🚀 START CAMERA</button>
-
-<div class="card">
-    <p id="bc-display" style="color:#888; letter-spacing: 1px;">NO DATA</p>
-    <div class="qty-text" id="qty-val">0</div>
-    
-    <div style="display:flex; justify-content:center; gap:25px;">
-        <button class="btn-side" onclick="sync('update', -1)">−</button>
-        <button class="btn-side" onclick="sync('update', 1)">+</button>
+<div class="panel">
+    <button class="btn-start" onclick="repairCamera()">REPAIR & START CAMERA</button>
+    <p><span class="bc-tag" id="bc-text">WAITING...</span></p>
+    <div class="qty" id="qty-val">0</div>
+    <div style="display:flex; justify-content:center; gap:20px;">
+        <button class="btn-qty" onclick="changeQty(-1)">−</button>
+        <button class="btn-qty" onclick="changeQty(1)">+</button>
     </div>
 </div>
 
@@ -59,69 +50,57 @@
     let activeBC = null;
     const beep = new Audio("https://www.soundjay.com/buttons/beep-07a.mp3");
 
-    function updateStatus(msg, color="#666") {
-        const s = document.getElementById('status-indicator');
-        s.innerText = "Status: " + msg;
-        s.style.color = color;
+    async function repairCamera() {
+        document.getElementById('error-log').innerText = "Requesting Access...";
+        try {
+            // STEP 1: Force the browser to show the "Allow" popup
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            stream.getTracks().forEach(track => track.stop()); // Stop it immediately so Quagga can take over
+            
+            // STEP 2: Start Quagga
+            initQuagga();
+        } catch (e) {
+            document.getElementById('error-log').innerText = "ERROR: " + e.message;
+        }
     }
 
-    function startScanner() {
-        updateStatus("Initializing...");
-        Quagga.stop();
-
-        // Standard settings for best compatibility
+    function initQuagga() {
         Quagga.init({
             inputStream: {
                 name: "Live",
                 type: "LiveStream",
                 target: document.querySelector('#interactive'),
-                constraints: {
-                    facingMode: "environment",
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
-                }
+                constraints: { facingMode: "environment" }
             },
-            decoder: {
-                readers: ["ean_reader", "upc_reader", "ean_8_reader", "code_128_reader"]
-            }
-        }, (err) => {
+            decoder: { readers: ["ean_reader", "upc_reader"] }
+        }, function(err) {
             if (err) {
-                updateStatus("ERROR: " + err.name, "red");
-                alert("Camera blocked. Please check browser permissions.");
+                document.getElementById('error-log').innerText = "Quagga Error: " + err;
                 return;
             }
+            document.getElementById('error-log').innerText = "";
             Quagga.start();
-            updateStatus("Scanner Online", "green");
-            beep.play().then(()=>beep.pause()); // Unlock sound
         });
     }
 
     Quagga.onDetected((data) => {
         let code = data.codeResult.code;
         if (activeBC === code) return;
-        
         activeBC = code;
         beep.play();
-        document.getElementById('bc-display').innerText = "BARCODE: " + code;
+        document.getElementById('bc-text').innerText = code;
         sync('get');
     });
 
     async function sync(type, val = 0) {
-        if(!activeBC) {
-            alert("Scan a barcode first!");
-            return;
-        }
-        updateStatus("Syncing...");
+        if(!activeBC) return;
         let endpoint = type === 'get' ? `${url}/get/${activeBC}` : `${url}/incrby/${activeBC}/${val}`;
-        try {
-            const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
-            const data = await res.json();
-            document.getElementById('qty-val').innerText = data.result || 0;
-            updateStatus("Ready", "green");
-        } catch (e) {
-            updateStatus("Sync Error", "red");
-        }
+        const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        document.getElementById('qty-val').innerText = data.result || 0;
     }
+
+    function changeQty(n) { if(activeBC) sync('update', n); }
 </script>
 
 </body>
