@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Condis 3416 - Full Pro</title>
+    <title>Condis 3416 - Ultimate</title>
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <style>
         :root { --condis-blue: #005696; --condis-red: #e30613; }
@@ -20,7 +20,7 @@
         #video-container { width: 100%; height: 250px; background: #000; border-radius: 15px; overflow: hidden; position: relative; }
         video { width: 100%; height: 100%; object-fit: cover; }
         
-        /* PHOTO SECTION */
+        /* PHOTO CIRCLE */
         .photo-circle { width: 110px; height: 110px; background: white; border-radius: 50%; margin: -55px auto 10px; border: 4px solid var(--condis-blue); overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; z-index: 10; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
         .photo-circle img { width: 100%; height: 100%; object-fit: cover; }
         #file-input { display: none; }
@@ -28,14 +28,21 @@
         .qty-box { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: 10px; }
         .btn-qty { width: 70px; height: 70px; border-radius: 50%; border: none; font-size: 35px; background: var(--condis-blue); color: white; font-weight: bold; }
         
+        /* SEARCH & LIST */
+        #search-bar { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: 1px solid #ddd; box-sizing: border-box; font-size: 16px; }
         .stock-card { background: white; display: flex; align-items: center; padding: 12px; margin-bottom: 8px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .thumb { width: 45px; height: 45px; background: #eee; border-radius: 8px; margin-right: 12px; object-fit: cover; }
+        .thumb { width: 50px; height: 50px; background: #eee; border-radius: 8px; margin-right: 12px; object-fit: cover; cursor: pointer; }
+
+        /* ZOOM MODAL */
+        #zoom-modal { display: none; position: fixed; z-index: 3000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; }
+        #zoom-img { max-width: 90%; max-height: 80%; border-radius: 10px; }
+        .close-zoom { position: absolute; top: 20px; right: 30px; color: white; font-size: 40px; }
     </style>
 </head>
 <body>
 
 <div id="mySidenav" class="sidenav">
-  <a href="#" onclick="showPage('home')">🏠 Dashboard</a>
+  <a href="#" onclick="showPage('home')">🏠 Home Dashboard</a>
   <a href="#" onclick="showPage('scan')">📸 Super Scanner</a>
   <a href="#" onclick="showPage('stock')">📦 All Stock List</a>
   <a href="#" onclick="closeNav()" style="color:var(--condis-red)">× Close</a>
@@ -48,140 +55,7 @@
 </header>
 
 <div id="home" class="page active-page">
-    <div style="margin-top:50px; background:white; padding:40px; border-radius:20px; position:relative; overflow:hidden;">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Logo_Condis.svg" style="width:150%; position:absolute; top:-20px; left:-50px; opacity:0.05; pointer-events:none;">
-        <h3 style="color:#888; margin:0;">Total Items</h3>
+    <div style="margin-top:50px; background:white; padding:40px; border-radius:20px;">
+        <h3 style="color:#888; margin:0;">Inventory Total</h3>
         <div id="total-items" style="font-size:60px; font-weight:bold; color:var(--condis-blue);">0</div>
-        <button onclick="showPage('scan')" style="width:100%; padding:18px; background:var(--condis-red); color:white; border:none; border-radius:12px; margin-top:20px; font-weight:bold; font-size:16px;">START SCANNING</button>
-    </div>
-</div>
-
-<div id="scan" class="page">
-    <div id="video-container"><video id="video"></video></div>
-    
-    <div class="photo-circle" onclick="document.getElementById('file-input').click()">
-        <img id="product-photo" src="" style="display:none;">
-        <span id="photo-label" style="font-size:10px; color:#aaa; font-weight:bold; text-align:center;">TAP TO<br>ADD PHOTO</span>
-    </div>
-    <input type="file" id="file-input" accept="image/*" capture="environment" onchange="previewPhoto(event)">
-    
-    <div class="qty-box">
-        <code id="bc-res" style="color:#999; font-size:18px;">SCAN PRODUCT</code>
-        <div id="qty-val" style="font-size:80px; font-weight:bold; color:var(--condis-blue); line-height:1.2;">0</div>
-        <div style="display:flex; justify-content:center; gap:25px;">
-            <button class="btn-qty" onclick="sync('update', -1)" style="background:#eee;color:#333;">-</button>
-            <button class="btn-qty" onclick="sync('update', 1)">+</button>
-        </div>
-    </div>
-    <button onclick="startSuperScanner()" style="width:100%; padding:15px; background:#444; color:white; border:none; border-radius:10px; margin-top:20px; font-weight:bold;">RESET CAMERA & SOUND</button>
-</div>
-
-<div id="stock" class="page">
-    <h3 style="text-align:left; color:var(--condis-blue);">Inventory List</h3>
-    <div id="stock-list"></div>
-</div>
-
-<script>
-    const url = "https://epic-dory-42115.upstash.io"; 
-    const token = "AaSDAAIncDIwYzlhNWU0ODUzZmQ0OWY0OGVlODE1NTg5NWRjOWIzNXAyNDIxMTU"; 
-    let activeBC = null;
-    const codeReader = new ZXing.BrowserMultiFormatReader();
-    const beep = new Audio("https://www.soundjay.com/buttons/beep-07a.mp3");
-
-    function openNav() { document.getElementById("mySidenav").style.width = "250px"; }
-    function closeNav() { document.getElementById("mySidenav").style.width = "0"; }
-
-    function showPage(p) {
-        document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active-page'));
-        document.getElementById(p).classList.add('active-page');
-        closeNav();
-        if(p === 'home') loadStats();
-        if(p === 'stock') loadStock();
-        if(p === 'scan') startSuperScanner();
-        else codeReader.reset();
-    }
-
-    function startSuperScanner() {
-        // Essential: Unlock sound on first click
-        beep.play().then(() => { beep.pause(); beep.currentTime = 0; });
-
-        codeReader.decodeFromVideoDevice(null, 'video', (result, err) => {
-            if (result) {
-                if(activeBC === result.text) return;
-                activeBC = result.text;
-                document.getElementById('bc-res').innerText = activeBC;
-                beep.play(); // Now it works!
-                sync('get');
-                // Reset photo for new product
-                document.getElementById('product-photo').style.display = 'none';
-                document.getElementById('photo-label').style.display = 'block';
-            }
-        });
-    }
-
-    // PHOTO HANDLING
-    function previewPhoto(event) {
-        const file = event.target.files[0];
-        if (!file || !activeBC) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const img = document.getElementById('product-photo');
-            img.src = e.target.result;
-            img.style.display = 'block';
-            document.getElementById('photo-label').style.display = 'none';
-            // Save to LocalStorage (Simple way for now)
-            localStorage.setItem('img-' + activeBC, e.target.result);
-        };
-        reader.readAsDataURL(file);
-    }
-
-    async function sync(type, val = 0) {
-        if(!activeBC) return;
-        let endpoint = type === 'get' ? `${url}/get/${activeBC}` : `${url}/incrby/${activeBC}/${val}`;
-        const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
-        const data = await res.json();
-        document.getElementById('qty-val').innerText = data.result || 0;
-        
-        // Load photo if exists
-        const savedImg = localStorage.getItem('img-' + activeBC);
-        if(savedImg) {
-            document.getElementById('product-photo').src = savedImg;
-            document.getElementById('product-photo').style.display = 'block';
-            document.getElementById('photo-label').style.display = 'none';
-        }
-    }
-
-    async function loadStats() {
-        const res = await fetch(`${url}/keys/*`, { headers: { Authorization: `Bearer ${token}` } });
-        const keys = (await res.json()).result || [];
-        document.getElementById('total-items').innerText = keys.length;
-    }
-
-    async function loadStock() {
-        const res = await fetch(`${url}/keys/*`, { headers: { Authorization: `Bearer ${token}` } });
-        const keys = (await res.json()).result || [];
-        let html = "";
-        for (let k of keys) {
-            const v = await (await fetch(`${url}/get/${k}`, { headers: { Authorization: `Bearer ${token}` } })).json();
-            const photo = localStorage.getItem('img-' + k) || '';
-            html += `<div class="stock-card">
-                <img class="thumb" src="${photo || 'https://via.placeholder.com/50?text=No+Pic'}">
-                <div style="flex-grow:1; text-align:left;"><b>${k}</b><br><small>Stock: ${v.result}</small></div>
-                <button onclick="deleteItem('${k}')" style="border:none; color:red; background:none; font-size:20px;">🗑️</button>
-            </div>`;
-        }
-        document.getElementById('stock-list').innerHTML = html || "Empty Inventory";
-    }
-
-    async function deleteItem(k) {
-        if(confirm("Delete " + k + "?")) {
-            await fetch(`${url}/del/${k}`, { headers: { Authorization: `Bearer ${token}` } });
-            localStorage.removeItem('img-' + k);
-            loadStock();
-        }
-    }
-
-    loadStats();
-</script>
-</body>
-</html>
+        <button onclick="showPage('scan')" style="width:100%; padding:18px; background:var(--condis-red
