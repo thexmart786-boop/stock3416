@@ -3,174 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Condis 3416 - Inventory Pro</title>
+    <title>Condis 3416 - Emergency Fix</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
-        :root { --condis-blue: #005696; --condis-red: #e30613; --bg-gray: #f4f7f9; }
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--bg-gray); color: #333; }
+        :root { --condis-blue: #005696; --condis-red: #e30613; }
+        body { font-family: sans-serif; margin: 0; background: #f4f7f9; text-align: center; }
+        
+        /* HEADER */
+        header { background: var(--condis-blue); color: white; padding: 15px; font-weight: bold; }
 
-        /* LOGO BACKGROUND FOR HOME */
-        .home-bg {
-            background-image: url('https://upload.wikimedia.org/wikipedia/commons/4/44/Logo_Condis.svg');
-            background-repeat: no-repeat;
-            background-position: center;
-            background-size: 80%;
-            background-attachment: fixed;
-            opacity: 0.05;
-            position: absolute; width: 100%; height: 100%; top: 0; left: 0; z-index: -1;
+        /* THE SCANNER BOX - Simplified */
+        #interactive.viewport { 
+            width: 100%; height: 250px; background: #000; 
+            position: relative; overflow: hidden;
+        }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        
+        /* GREEN LINE TO HELP WORKERS SCAN */
+        .laser { 
+            position: absolute; top: 50%; left: 10%; right: 10%; 
+            height: 2px; background: #00ff00; box-shadow: 0 0 10px #00ff00; 
+            z-index: 10; pointer-events: none;
         }
 
-        header { background: var(--condis-blue); color: white; padding: 15px; display: flex; align-items: center; position: sticky; top: 0; z-index: 100; }
-        .menu-icon { font-size: 28px; cursor: pointer; margin-right: 15px; }
+        .card { background: white; padding: 20px; margin: 10px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .qty { font-size: 80px; font-weight: bold; color: var(--condis-blue); margin: 10px 0; }
         
-        /* SIDE NAV */
-        .sidenav { height: 100%; width: 0; position: fixed; z-index: 200; top: 0; left: 0; background-color: #1a1a1a; overflow-x: hidden; transition: 0.3s; padding-top: 60px; }
-        .sidenav a { padding: 15px 25px; text-decoration: none; font-size: 18px; color: #bbb; display: block; border-bottom: 1px solid #333; }
-
-        .page { display: none; padding: 15px; position: relative; min-height: 80vh; }
-        .active-page { display: block; }
-
-        /* CARDS & STATS */
-        .stat-card { background: white; padding: 20px; border-radius: 15px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 15px; }
-        .stat-num { font-size: 32px; font-weight: bold; color: var(--condis-blue); }
-
-        /* STOCK LIST TABLE */
-        .stock-item { background: white; margin-bottom: 10px; padding: 10px; border-radius: 12px; display: flex; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .stock-img { width: 50px; height: 50px; border-radius: 8px; background: #eee; margin-right: 12px; object-fit: cover; }
-        .stock-info { flex-grow: 1; text-align: left; }
-        .stock-bc { font-size: 14px; font-weight: bold; }
-        .stock-qty { color: var(--condis-blue); font-weight: bold; }
-        .btn-delete { background: #ffeded; color: var(--condis-red); border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-size: 12px; }
-
-        /* SCANNER UI */
-        #interactive.viewport { width: 100%; height: 200px; background: #000; border-radius: 12px; overflow: hidden; }
-        .product-photo-circle { width: 120px; height: 120px; background: #fff; border-radius: 50%; margin: -60px auto 10px; border: 4px solid var(--condis-blue); overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; }
+        button { padding: 15px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
+        .btn-camera { background: var(--condis-red); color: white; width: 90%; margin: 10px 0; font-size: 18px; }
+        .btn-qty { background: var(--condis-blue); color: white; width: 80px; height: 80px; border-radius: 50%; font-size: 35px; }
     </style>
 </head>
 <body>
 
-<div id="mySidenav" class="sidenav">
-  <a href="#" onclick="showPage('home')">🏠 Home Dashboard</a>
-  <a href="#" onclick="showPage('scan')">📸 Scan Product</a>
-  <a href="#" onclick="showPage('stock')">📦 All Inventory</a>
-  <a href="#" onclick="closeNav()" style="color:var(--condis-red)">× Close</a>
+<header>CONDIS 3416 - INVENTORY</header>
+
+<div id="interactive" class="viewport">
+    <div class="laser"></div>
 </div>
 
-<header>
-    <span class="menu-icon" onclick="openNav()">&#9776;</span>
-    <span style="font-weight:bold;">CONDIS 3416</span>
-</header>
+<button class="btn-camera" onclick="startScanner()">🔴 START CAMERA & SOUND</button>
 
-<div id="home" class="page active-page">
-    <div class="home-bg"></div>
-    <div class="stat-card">
-        <span class="stat-num" id="stat-total">0</span><br>
-        <span style="color:#888;">Unique Barcodes</span>
+<div class="card">
+    <p id="display-bc" style="color: #888;">WAITING FOR SCAN...</p>
+    <div class="qty" id="qty-display">0</div>
+    
+    <div style="display:flex; justify-content:center; gap:20px;">
+        <button class="btn-qty" onclick="changeQty(-1)">−</button>
+        <button class="btn-qty" onclick="changeQty(1)">+</button>
     </div>
-    <button onclick="showPage('scan')" style="width:100%; padding:20px; background:var(--condis-blue); color:white; border:none; border-radius:15px; font-size:18px; font-weight:bold;">+ SCAN NEW ITEMS</button>
-</div>
-
-<div id="scan" class="page">
-    <div id="interactive" class="viewport"></div>
-    <div class="product-photo-circle" onclick="takePhoto()">
-        <img id="current-prod-img" src="" style="width:100%; height:100%; object-fit:cover; display:none;">
-        <span id="no-img-text" style="font-size:10px; color:#aaa; text-align:center;">NO PHOTO<br>TAP TO ADD</span>
-    </div>
-    <div class="stat-card">
-        <p id="display-bc" style="font-family:monospace; margin:0;">SCANNING...</p>
-        <div id="qty-display" style="font-size:60px; font-weight:bold;">0</div>
-        <button onclick="updateStock(-1)" style="font-size:30px; width:60px; height:60px; border-radius:50%; border:none; background:#eee;">−</button>
-        <button onclick="updateStock(1)" style="font-size:30px; width:60px; height:60px; border-radius:50%; border:none; background:var(--condis-blue); color:white; margin-left:20px;">+</button>
-    </div>
-    <button onclick="initScanner()" style="width:100%; padding:15px; background:var(--condis-red); color:white; border:none; border-radius:10px;">START CAMERA</button>
-</div>
-
-<div id="stock" class="page">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h3 style="margin:0;">Current Inventory</h3>
-        <button onclick="loadAllStock()" style="font-size:12px;">Refresh</button>
-    </div>
-    <div id="stock-list-container"></div>
 </div>
 
 <script>
     const url = "https://epic-dory-42115.upstash.io"; 
     const token = "AaSDAAIncDIwYzlhNWU0ODUzZmQ0OWY0OGVlODE1NTg5NWRjOWIzNXAyNDIxMTU"; 
     let activeBC = null;
+    const beep = new Audio("https://www.soundjay.com/buttons/beep-07a.mp3");
 
-    function openNav() { document.getElementById("mySidenav").style.width = "250px"; }
-    function closeNav() { document.getElementById("mySidenav").style.width = "0"; }
+    function startScanner() {
+        // Stop any running camera first to prevent "black screen"
+        Quagga.stop();
 
-    function showPage(pageId) {
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
-        document.getElementById(pageId).classList.add('active-page');
-        closeNav();
-        if(pageId === 'home') updateHomeStats();
-        if(pageId === 'stock') loadAllStock();
-    }
+        // Unlock sound for iPhone
+        beep.play().then(() => { beep.pause(); beep.currentTime = 0; });
 
-    function initScanner() {
         Quagga.init({
-            inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#interactive'), constraints: { facingMode: "environment" } },
-            decoder: { readers: ["ean_reader", "upc_reader"] }
-        }, (err) => { if(!err) Quagga.start(); });
+            inputStream: {
+                name: "Live",
+                type: "LiveStream",
+                target: document.querySelector('#interactive'),
+                constraints: { facingMode: "environment" } // Forces back camera
+            },
+            decoder: { readers: ["ean_reader", "upc_reader", "ean_8_reader"] }
+        }, (err) => {
+            if (err) {
+                alert("CAMERA ERROR: Please go to settings and ALLOW camera for this website.");
+                return;
+            }
+            Quagga.start();
+        });
     }
 
     Quagga.onDetected((data) => {
-        if (activeBC === data.codeResult.code) return;
-        activeBC = data.codeResult.code;
-        document.getElementById('display-bc').innerText = activeBC;
-        fetchData('get');
+        let code = data.codeResult.code;
+        if (activeBC === code) return;
+        
+        activeBC = code;
+        beep.play();
+        document.getElementById('display-bc').innerText = "BARCODE: " + code;
+        sync('get');
     });
 
-    async function fetchData(action, amount = 0) {
-        let endpoint = action === 'get' ? `${url}/get/${activeBC}` : `${url}/incrby/${activeBC}/${amount}`;
+    async function sync(type, val = 0) {
+        if(!activeBC) return;
+        let endpoint = type === 'get' ? `${url}/get/${activeBC}` : `${url}/incrby/${activeBC}/${val}`;
         const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
         document.getElementById('qty-display').innerText = data.result || 0;
     }
 
-    function updateStock(n) { if(activeBC) fetchData('update', n); }
-
-    async function deleteItem(key) {
-        if(confirm("Delete product " + key + " from database?")) {
-            await fetch(`${url}/del/${key}`, { headers: { Authorization: `Bearer ${token}` } });
-            loadAllStock();
-        }
-    }
-
-    async function loadAllStock() {
-        const res = await fetch(`${url}/keys/*`, { headers: { Authorization: `Bearer ${token}` } });
-        const keys = (await res.json()).result || [];
-        let html = "";
-        for (let k of keys) {
-            const v = await (await fetch(`${url}/get/${k}`, { headers: { Authorization: `Bearer ${token}` } })).json();
-            html += `
-                <div class="stock-item">
-                    <img class="stock-img" src="https://via.placeholder.com/50?text=IMG">
-                    <div class="stock-info">
-                        <span class="stock-bc">${k}</span><br>
-                        <span class="stock-qty">Quantity: ${v.result}</span>
-                    </div>
-                    <button class="btn-delete" onclick="deleteItem('${k}')">🗑️</button>
-                </div>`;
-        }
-        document.getElementById('stock-list-container').innerHTML = html || "<p>No items found.</p>";
-    }
-
-    async function updateHomeStats() {
-        const res = await fetch(`${url}/keys/*`, { headers: { Authorization: `Bearer ${token}` } });
-        const keys = (await res.json()).result || [];
-        document.getElementById('stat-total').innerText = keys.length;
-    }
-
-    function takePhoto() {
-        if(!activeBC) return alert("Scan product first!");
-        // Placeholder logic for next step
-        alert("Camera opening for barcode: " + activeBC);
-    }
-
-    updateHomeStats();
+    function changeQty(n) { if(activeBC) sync('update', n); else alert("Scan something first!"); }
 </script>
+
 </body>
 </html>
