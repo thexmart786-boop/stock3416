@@ -3,54 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Condis 3416 - Emergency Fix</title>
+    <title>Condis 3416 - Reset</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         :root { --condis-blue: #005696; --condis-red: #e30613; }
         body { font-family: sans-serif; margin: 0; background: #f4f7f9; text-align: center; }
-        
-        /* HEADER */
         header { background: var(--condis-blue); color: white; padding: 15px; font-weight: bold; }
-
-        /* THE SCANNER BOX - Simplified */
-        #interactive.viewport { 
-            width: 100%; height: 250px; background: #000; 
-            position: relative; overflow: hidden;
-        }
+        
+        /* SCANNER WINDOW */
+        #interactive.viewport { width: 100%; height: 250px; background: #000; position: relative; overflow: hidden; }
         video { width: 100%; height: 100%; object-fit: cover; }
         
-        /* GREEN LINE TO HELP WORKERS SCAN */
-        .laser { 
-            position: absolute; top: 50%; left: 10%; right: 10%; 
-            height: 2px; background: #00ff00; box-shadow: 0 0 10px #00ff00; 
-            z-index: 10; pointer-events: none;
-        }
+        /* VISUAL SCAN ZONE */
+        .scan-zone { position: absolute; top: 20%; left: 10%; width: 80%; height: 60%; border: 2px solid rgba(255,255,255,0.3); border-radius: 10px; pointer-events: none; }
+        .scan-line { position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: red; box-shadow: 0 0 10px red; animation: move 2s infinite; }
+        @keyframes move { 0%, 100% { top: 10%; } 50% { top: 90%; } }
 
-        .card { background: white; padding: 20px; margin: 10px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .qty { font-size: 80px; font-weight: bold; color: var(--condis-blue); margin: 10px 0; }
+        .card { background: white; padding: 20px; margin: 15px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .qty-text { font-size: 80px; font-weight: bold; color: var(--condis-blue); margin: 10px 0; }
         
-        button { padding: 15px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
-        .btn-camera { background: var(--condis-red); color: white; width: 90%; margin: 10px 0; font-size: 18px; }
-        .btn-qty { background: var(--condis-blue); color: white; width: 80px; height: 80px; border-radius: 50%; font-size: 35px; }
+        button { padding: 18px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-main { background: var(--condis-red); color: white; width: 90%; font-size: 18px; margin-bottom: 10px; }
+        .btn-side { background: var(--condis-blue); color: white; width: 80px; height: 80px; font-size: 40px; border-radius: 50%; }
+        
+        #status-indicator { font-size: 12px; padding: 5px; color: #666; }
     </style>
 </head>
 <body>
 
-<header>CONDIS 3416 - INVENTORY</header>
+<header>CONDIS 3416 - SYSTEM RESET</header>
 
 <div id="interactive" class="viewport">
-    <div class="laser"></div>
+    <div class="scan-zone">
+        <div class="scan-line"></div>
+    </div>
 </div>
 
-<button class="btn-camera" onclick="startScanner()">🔴 START CAMERA & SOUND</button>
+<div id="status-indicator">Status: Waiting for user...</div>
+
+<button class="btn-main" onclick="startScanner()">🚀 START CAMERA</button>
 
 <div class="card">
-    <p id="display-bc" style="color: #888;">WAITING FOR SCAN...</p>
-    <div class="qty" id="qty-display">0</div>
+    <p id="bc-display" style="color:#888; letter-spacing: 1px;">NO DATA</p>
+    <div class="qty-text" id="qty-val">0</div>
     
-    <div style="display:flex; justify-content:center; gap:20px;">
-        <button class="btn-qty" onclick="changeQty(-1)">−</button>
-        <button class="btn-qty" onclick="changeQty(1)">+</button>
+    <div style="display:flex; justify-content:center; gap:25px;">
+        <button class="btn-side" onclick="sync('update', -1)">−</button>
+        <button class="btn-side" onclick="sync('update', 1)">+</button>
     </div>
 </div>
 
@@ -60,27 +59,40 @@
     let activeBC = null;
     const beep = new Audio("https://www.soundjay.com/buttons/beep-07a.mp3");
 
+    function updateStatus(msg, color="#666") {
+        const s = document.getElementById('status-indicator');
+        s.innerText = "Status: " + msg;
+        s.style.color = color;
+    }
+
     function startScanner() {
-        // Stop any running camera first to prevent "black screen"
+        updateStatus("Initializing...");
         Quagga.stop();
 
-        // Unlock sound for iPhone
-        beep.play().then(() => { beep.pause(); beep.currentTime = 0; });
-
+        // Standard settings for best compatibility
         Quagga.init({
             inputStream: {
                 name: "Live",
                 type: "LiveStream",
                 target: document.querySelector('#interactive'),
-                constraints: { facingMode: "environment" } // Forces back camera
+                constraints: {
+                    facingMode: "environment",
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                }
             },
-            decoder: { readers: ["ean_reader", "upc_reader", "ean_8_reader"] }
+            decoder: {
+                readers: ["ean_reader", "upc_reader", "ean_8_reader", "code_128_reader"]
+            }
         }, (err) => {
             if (err) {
-                alert("CAMERA ERROR: Please go to settings and ALLOW camera for this website.");
+                updateStatus("ERROR: " + err.name, "red");
+                alert("Camera blocked. Please check browser permissions.");
                 return;
             }
             Quagga.start();
+            updateStatus("Scanner Online", "green");
+            beep.play().then(()=>beep.pause()); // Unlock sound
         });
     }
 
@@ -90,19 +102,26 @@
         
         activeBC = code;
         beep.play();
-        document.getElementById('display-bc').innerText = "BARCODE: " + code;
+        document.getElementById('bc-display').innerText = "BARCODE: " + code;
         sync('get');
     });
 
     async function sync(type, val = 0) {
-        if(!activeBC) return;
+        if(!activeBC) {
+            alert("Scan a barcode first!");
+            return;
+        }
+        updateStatus("Syncing...");
         let endpoint = type === 'get' ? `${url}/get/${activeBC}` : `${url}/incrby/${activeBC}/${val}`;
-        const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
-        const data = await res.json();
-        document.getElementById('qty-display').innerText = data.result || 0;
+        try {
+            const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+            const data = await res.json();
+            document.getElementById('qty-val').innerText = data.result || 0;
+            updateStatus("Ready", "green");
+        } catch (e) {
+            updateStatus("Sync Error", "red");
+        }
     }
-
-    function changeQty(n) { if(activeBC) sync('update', n); else alert("Scan something first!"); }
 </script>
 
 </body>
