@@ -3,45 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Condis 3416 - Fix</title>
+    <title>Condis 3416 - Full Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
-        body { font-family: sans-serif; margin: 0; background: #000; color: white; text-align: center; }
-        header { background: #005696; padding: 15px; font-weight: bold; }
-        
-        /* THE VIEWER */
-        #interactive.viewport { 
-            width: 100vw; height: 60vh; background: #222; 
-            position: relative; overflow: hidden;
-        }
+        :root { --condis-blue: #005696; --condis-red: #e30613; --bg-gray: #f4f7f9; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--bg-gray); }
+
+        /* MENU & HEADER */
+        header { background: var(--condis-blue); color: white; padding: 15px; display: flex; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .menu-icon { font-size: 28px; cursor: pointer; margin-right: 15px; }
+        .sidenav { height: 100%; width: 0; position: fixed; z-index: 200; top: 0; left: 0; background: #1a1a1a; overflow-x: hidden; transition: 0.3s; padding-top: 60px; }
+        .sidenav a { padding: 15px 25px; text-decoration: none; font-size: 18px; color: #bbb; display: block; border-bottom: 1px solid #333; }
+
+        /* PAGES */
+        .page { display: none; padding: 15px; text-align: center; }
+        .active-page { display: block; }
+
+        /* HOME DASHBOARD */
+        .home-bg { background: url('https://upload.wikimedia.org/wikipedia/commons/4/44/Logo_Condis.svg') no-repeat center; background-size: 70%; opacity: 0.05; position: absolute; width: 100%; height: 80%; top: 10%; left: 0; z-index: -1; }
+        .stat-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; border-top: 4px solid var(--condis-blue); }
+
+        /* SCANNER UI */
+        #interactive.viewport { width: 100%; height: 200px; background: #000; border-radius: 12px; overflow: hidden; }
         video { width: 100%; height: 100%; object-fit: cover; }
-        
-        .panel { background: white; color: #333; padding: 20px; border-top-left-radius: 20px; border-top-right-radius: 20px; min-height: 40vh; position: relative; margin-top: -20px; }
-        .bc-tag { background: #eee; padding: 5px 10px; border-radius: 5px; font-family: monospace; }
-        .qty { font-size: 80px; font-weight: bold; color: #005696; margin: 10px 0; }
-        
-        button { border: none; font-weight: bold; cursor: pointer; }
-        .btn-start { background: #e30613; color: white; width: 80%; padding: 15px; border-radius: 10px; font-size: 18px; margin-bottom: 10px; }
-        .btn-qty { background: #005696; color: white; width: 70px; height: 70px; border-radius: 50%; font-size: 30px; }
-        
-        #error-log { font-size: 12px; color: red; margin: 5px; background: rgba(255,0,0,0.1); }
+        .photo-circle { width: 100px; height: 100px; background: white; border-radius: 50%; border: 3px solid var(--condis-blue); margin: -50px auto 10px; position: relative; z-index: 10; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .photo-circle img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* BUTTONS */
+        .btn-qty { width: 70px; height: 70px; border-radius: 50%; border: none; font-size: 30px; background: var(--condis-blue); color: white; }
+        .btn-delete { background: none; border: none; color: var(--condis-red); font-size: 18px; cursor: pointer; }
+
+        /* STOCK TABLE */
+        .stock-row { background: white; display: flex; align-items: center; padding: 10px; margin-bottom: 8px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     </style>
 </head>
 <body>
 
-<header>CONDIS 3416 - REPAIR MODE</header>
+<div id="mySidenav" class="sidenav">
+  <a href="#" onclick="showPage('home')">🏠 Home Dashboard</a>
+  <a href="#" onclick="showPage('scan')">📸 Scan Me</a>
+  <a href="#" onclick="showPage('stock')">📦 All Stock</a>
+  <a href="#" onclick="closeNav()" style="color:var(--condis-red)">× Close</a>
+</div>
 
-<div id="interactive" class="viewport"></div>
-<div id="error-log"></div>
+<header>
+    <span class="menu-icon" onclick="openNav()">&#9776;</span>
+    <span style="font-weight:bold;">CONDIS 3416</span>
+</header>
 
-<div class="panel">
-    <button class="btn-start" onclick="repairCamera()">REPAIR & START CAMERA</button>
-    <p><span class="bc-tag" id="bc-text">WAITING...</span></p>
-    <div class="qty" id="qty-val">0</div>
-    <div style="display:flex; justify-content:center; gap:20px;">
-        <button class="btn-qty" onclick="changeQty(-1)">−</button>
-        <button class="btn-qty" onclick="changeQty(1)">+</button>
+<div id="home" class="page active-page">
+    <div class="home-bg"></div>
+    <div class="stat-card">
+        <h3 style="margin:0; color:#888;">Total Products</h3>
+        <div id="total-count" style="font-size:40px; font-weight:bold; color:var(--condis-blue);">0</div>
     </div>
+    <button onclick="showPage('scan')" style="width:100%; padding:20px; background:var(--condis-blue); color:white; border:none; border-radius:12px; font-weight:bold; font-size:18px;">+ START SCANNING</button>
+</div>
+
+<div id="scan" class="page">
+    <div id="interactive" class="viewport"></div>
+    <div class="photo-circle" onclick="takePhoto()">
+        <span id="p-text" style="font-size:10px; color:#aaa; text-align:center;">ADD<br>PHOTO</span>
+        <img id="p-img" style="display:none;">
+    </div>
+    <div class="stat-card">
+        <p id="display-bc" style="font-family:monospace; margin:0; color:#888;">READY TO SCAN</p>
+        <div id="qty-display" style="font-size:70px; font-weight:bold; color:var(--condis-blue);">0</div>
+        <div style="display:flex; justify-content:center; gap:20px;">
+            <button class="btn-qty" onclick="sync('update', -1)" style="background:#eee; color:#333;">−</button>
+            <button class="btn-qty" onclick="sync('update', 1)">+</button>
+        </div>
+    </div>
+    <button onclick="repairCamera()" style="width:100%; padding:15px; background:var(--condis-red); color:white; border:none; border-radius:10px;">RE-ACTIVATE CAMERA</button>
+</div>
+
+<div id="stock" class="page">
+    <h3 style="text-align:left;">Inventory List</h3>
+    <div id="stock-list"></div>
 </div>
 
 <script>
@@ -50,45 +88,38 @@
     let activeBC = null;
     const beep = new Audio("https://www.soundjay.com/buttons/beep-07a.mp3");
 
+    function openNav() { document.getElementById("mySidenav").style.width = "250px"; }
+    function closeNav() { document.getElementById("mySidenav").style.width = "0"; }
+
+    function showPage(p) {
+        document.querySelectorAll('.page').forEach(page => page.classList.remove('active-page'));
+        document.getElementById(p).classList.add('active-page');
+        closeNav();
+        if(p === 'home') updateHome();
+        if(p === 'stock') loadStock();
+    }
+
+    // THE CAMERA REPAIR LOGIC
     async function repairCamera() {
-        document.getElementById('error-log').innerText = "Requesting Access...";
         try {
-            // STEP 1: Force the browser to show the "Allow" popup
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            stream.getTracks().forEach(track => track.stop()); // Stop it immediately so Quagga can take over
-            
-            // STEP 2: Start Quagga
+            stream.getTracks().forEach(t => t.stop());
             initQuagga();
-        } catch (e) {
-            document.getElementById('error-log').innerText = "ERROR: " + e.message;
-        }
+        } catch (e) { alert("Camera Permission Required"); }
     }
 
     function initQuagga() {
         Quagga.init({
-            inputStream: {
-                name: "Live",
-                type: "LiveStream",
-                target: document.querySelector('#interactive'),
-                constraints: { facingMode: "environment" }
-            },
+            inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#interactive'), constraints: { facingMode: "environment" } },
             decoder: { readers: ["ean_reader", "upc_reader"] }
-        }, function(err) {
-            if (err) {
-                document.getElementById('error-log').innerText = "Quagga Error: " + err;
-                return;
-            }
-            document.getElementById('error-log').innerText = "";
-            Quagga.start();
-        });
+        }, (err) => { if(!err) Quagga.start(); });
     }
 
     Quagga.onDetected((data) => {
-        let code = data.codeResult.code;
-        if (activeBC === code) return;
-        activeBC = code;
+        if (activeBC === data.codeResult.code) return;
+        activeBC = data.codeResult.code;
         beep.play();
-        document.getElementById('bc-text').innerText = code;
+        document.getElementById('display-bc').innerText = activeBC;
         sync('get');
     });
 
@@ -97,11 +128,40 @@
         let endpoint = type === 'get' ? `${url}/get/${activeBC}` : `${url}/incrby/${activeBC}/${val}`;
         const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
-        document.getElementById('qty-val').innerText = data.result || 0;
+        document.getElementById('qty-display').innerText = data.result || 0;
     }
 
-    function changeQty(n) { if(activeBC) sync('update', n); }
-</script>
+    async function updateHome() {
+        const res = await fetch(`${url}/keys/*`, { headers: { Authorization: `Bearer ${token}` } });
+        const keys = (await res.json()).result || [];
+        document.getElementById('total-count').innerText = keys.length;
+    }
 
+    async function loadStock() {
+        const res = await fetch(`${url}/keys/*`, { headers: { Authorization: `Bearer ${token}` } });
+        const keys = (await res.json()).result || [];
+        let html = "";
+        for (let k of keys) {
+            const v = await (await fetch(`${url}/get/${k}`, { headers: { Authorization: `Bearer ${token}` } })).json();
+            html += `<div class="stock-row">
+                <div style="width:40px; height:40px; background:#eee; border-radius:50%; margin-right:10px;"></div>
+                <div style="flex-grow:1; text-align:left;"><b>${k}</b><br><small>Qty: ${v.result}</small></div>
+                <button class="btn-delete" onclick="deleteItem('${k}')">🗑️</button>
+            </div>`;
+        }
+        document.getElementById('stock-list').innerHTML = html || "Empty Inventory";
+    }
+
+    async function deleteItem(k) {
+        if(confirm("Delete " + k + "?")) {
+            await fetch(`${url}/del/${k}`, { headers: { Authorization: `Bearer ${token}` } });
+            loadStock();
+        }
+    }
+
+    function takePhoto() { if(activeBC) alert("Photo capture for " + activeBC + " coming in next update!"); }
+
+    updateHome();
+</script>
 </body>
 </html>
