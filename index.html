@@ -7,33 +7,32 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <style>
         :root { --condis-blue: #005696; --condis-red: #e30613; }
-        body { font-family: -apple-system, sans-serif; margin: 0; background: #f0f3f5; overscroll-behavior: none; }
+        body { font-family: -apple-system, sans-serif; margin: 0; background: #f4f7f9; overscroll-behavior: none; }
         
-        /* HEADER */
         header { background: var(--condis-blue); color: white; padding: 15px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .sidenav { height: 100%; width: 0; position: fixed; z-index: 2000; top: 0; left: 0; background: #111; overflow-x: hidden; transition: 0.3s; padding-top: 60px; }
         .sidenav a { padding: 15px 25px; text-decoration: none; font-size: 20px; color: #818181; display: block; border-bottom: 1px solid #222; }
 
-        .page { display: none; padding: 15px; text-align: center; animation: fadeIn 0.3s; }
+        .page { display: none; padding: 15px; text-align: center; }
         .active-page { display: block; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
+        /* HOME PAGE - NO PHOTO */
+        .home-card { margin-top: 50px; background: white; padding: 40px 20px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        
         /* SCANNER AREA */
         #video-container { width: 100%; height: 280px; background: #000; border-radius: 20px; overflow: hidden; position: relative; border: 3px solid #333; }
         video { width: 100%; height: 100%; object-fit: cover; }
         
-        /* PHOTO CIRCLE */
+        /* PHOTO CIRCLE (ONLY ON SCAN PAGE) */
         .photo-circle { width: 100px; height: 100px; background: white; border-radius: 50%; margin: -50px auto 10px; border: 4px solid var(--condis-blue); overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
         .photo-circle img { width: 100%; height: 100%; object-fit: cover; }
         #file-input { display: none; }
 
-        /* QTY CONTROLS */
         .qty-box { background: white; padding: 25px; border-radius: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); margin-top: 15px; }
-        .btn-qty { width: 75px; height: 75px; border-radius: 50%; border: none; font-size: 40px; background: var(--condis-blue); color: white; active: transform: scale(0.9); transition: 0.1s; }
+        .btn-qty { width: 75px; height: 75px; border-radius: 50%; border: none; font-size: 40px; background: var(--condis-blue); color: white; }
         
-        /* STOCK LIST */
         #search-bar { width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 12px; border: 1px solid #ddd; font-size: 16px; box-sizing: border-box; }
-        .stock-card { background: white; display: flex; align-items: center; padding: 15px; margin-bottom: 10px; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.03); }
+        .stock-card { background: white; display: flex; align-items: center; padding: 15px; margin-bottom: 10px; border-radius: 15px; }
         .thumb { width: 55px; height: 55px; background: #eee; border-radius: 10px; margin-right: 15px; object-fit: cover; }
 
         #zoom-modal { display: none; position: fixed; z-index: 3000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); align-items: center; justify-content: center; }
@@ -46,7 +45,7 @@
   <a href="#" onclick="showPage('home')">🏠 Dashboard</a>
   <a href="#" onclick="showPage('scan')">📸 Super Scanner</a>
   <a href="#" onclick="showPage('stock')">📦 All Stock List</a>
-  <a href="#" onclick="closeNav()" style="color:var(--condis-red)">× Close Menu</a>
+  <a href="#" onclick="closeNav()" style="color:var(--condis-red)">× Close</a>
 </div>
 
 <header>
@@ -56,11 +55,11 @@
 </header>
 
 <div id="home" class="page active-page">
-    <div style="margin-top:50px; background:white; padding:40px; border-radius:25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05);">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Logo_Condis.svg" style="width:120px; margin-bottom:20px;">
-        <h4 style="color:#888; margin:0; text-transform:uppercase; font-size:12px;">Total Items in Stock</h4>
-        <div id="total-items" style="font-size:65px; font-weight:bold; color:var(--condis-blue);">0</div>
-        <button onclick="showPage('scan')" style="width:100%; padding:20px; background:var(--condis-red); color:white; border:none; border-radius:15px; margin-top:20px; font-weight:bold; font-size:18px;">START SCANNING</button>
+    <div class="home-card">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Logo_Condis.svg" style="width:140px; margin-bottom:20px;">
+        <h4 style="color:#888; margin:0; text-transform:uppercase; font-size:12px; letter-spacing: 1px;">Database Items</h4>
+        <div id="total-items" style="font-size:70px; font-weight:bold; color:var(--condis-blue);">0</div>
+        <button onclick="unlockSoundAndScan()" style="width:100%; padding:20px; background:var(--condis-red); color:white; border:none; border-radius:15px; margin-top:20px; font-weight:bold; font-size:18px;">START SCANNING</button>
     </div>
 </div>
 
@@ -68,19 +67,19 @@
     <div id="video-container"><video id="video"></video></div>
     <div class="photo-circle" onclick="document.getElementById('file-input').click()">
         <img id="product-photo" src="" style="display:none;">
-        <span id="photo-label" style="font-size:10px; color:#aaa; font-weight:bold;">PHOTO</span>
+        <span id="photo-label" style="font-size:10px; color:#aaa; font-weight:bold;">ADD PHOTO</span>
     </div>
     <input type="file" id="file-input" accept="image/*" capture="environment" onchange="previewPhoto(event)">
     
     <div class="qty-box">
-        <code id="bc-res" style="color:#999; font-size:18px;">---</code>
+        <code id="bc-res" style="color:#999; font-size:18px;">READY</code>
         <div id="qty-val" style="font-size:85px; font-weight:bold; color:var(--condis-blue); margin:10px 0;">0</div>
         <div style="display:flex; justify-content:center; gap:30px;">
             <button class="btn-qty" onclick="sync('update', -1)" style="background:#eef1f4; color:#333;">-</button>
             <button class="btn-qty" onclick="sync('update', 1)">+</button>
         </div>
     </div>
-    <button onclick="cycleCamera()" style="margin-top:20px; padding:12px 25px; background:#444; color:white; border:none; border-radius:30px; font-size:14px; font-weight:bold;">🔄 SWITCH CAMERA</button>
+    <button onclick="cycleCamera()" style="margin-top:20px; padding:12px 25px; background:#444; color:white; border:none; border-radius:30px; font-weight:bold;">🔄 SWITCH CAMERA</button>
 </div>
 
 <div id="stock" class="page">
@@ -97,10 +96,22 @@
     let selectedDeviceId;
     let videoDevices = [];
     const codeReader = new ZXing.BrowserMultiFormatReader();
+    
+    // SOUND SETUP
     const beep = new Audio("https://www.soundjay.com/buttons/beep-07a.mp3");
+    beep.load();
 
     function openNav() { document.getElementById("mySidenav").style.width = "280px"; }
     function closeNav() { document.getElementById("mySidenav").style.width = "0"; }
+
+    // IMPORTANT: Unlock sound on first click
+    function unlockSoundAndScan() {
+        beep.play().then(() => {
+            beep.pause();
+            beep.currentTime = 0;
+            showPage('scan');
+        }).catch(() => showPage('scan'));
+    }
 
     function showPage(p) {
         document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active-page'));
@@ -115,10 +126,9 @@
     async function initCamera() {
         try {
             videoDevices = await codeReader.listVideoInputDevices();
-            // Start with the last device (usually the main high-res camera on Android)
             selectedDeviceId = videoDevices[videoDevices.length - 1].deviceId;
             startScanning();
-        } catch (e) { alert("Camera not found. Allow permissions."); }
+        } catch (e) { console.error(e); }
     }
 
     function startScanning() {
@@ -127,7 +137,7 @@
                 if(activeBC === result.text) return;
                 activeBC = result.text;
                 document.getElementById('bc-res').innerText = activeBC;
-                beep.play().catch(()=>{});
+                beep.play(); // Sound should work now
                 sync('get');
             }
         });
@@ -163,13 +173,15 @@
             document.getElementById('qty-val').innerText = data.result || 0;
             
             const savedImg = localStorage.getItem('img-' + activeBC);
+            const imgEl = document.getElementById('product-photo');
+            const lblEl = document.getElementById('photo-label');
             if(savedImg) {
-                document.getElementById('product-photo').src = savedImg;
-                document.getElementById('product-photo').style.display = 'block';
-                document.getElementById('photo-label').style.display = 'none';
+                imgEl.src = savedImg;
+                imgEl.style.display = 'block';
+                lblEl.style.display = 'none';
             } else {
-                document.getElementById('product-photo').style.display = 'none';
-                document.getElementById('photo-label').style.display = 'block';
+                imgEl.style.display = 'none';
+                lblEl.style.display = 'block';
             }
         } catch(e) {}
     }
@@ -193,7 +205,7 @@
                 <button onclick="deleteItem('${k}')" style="border:none; color:var(--condis-red); background:none; font-size:20px;">🗑️</button>
             </div>`;
         }
-        document.getElementById('stock-list').innerHTML = html || "Empty Inventory";
+        document.getElementById('stock-list').innerHTML = html || "Empty";
     }
 
     function filterStock() {
