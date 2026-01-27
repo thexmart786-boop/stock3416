@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Condis 3416 - Master</title>
+    <title>Condis 3416 - Pro</title>
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <style>
         :root { --condis-blue: #005696; --condis-red: #e30613; }
@@ -30,8 +30,14 @@
         .qty-box { background: white; padding: 20px; border-radius: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); margin-top: 10px; }
         .btn-qty { width: 75px; height: 75px; border-radius: 50%; border: none; font-size: 35px; background: var(--condis-blue); color: white; margin: 0 10px; }
 
+        /* STOCK LIST & SEARCH */
         .stock-card { background: white; display: flex; align-items: center; padding: 10px; margin-bottom: 8px; border-radius: 12px; border: 1px solid #eee; }
-        .thumb { width: 50px; height: 50px; border-radius: 8px; margin-right: 12px; object-fit: cover; background: #f0f0f0; }
+        .thumb { width: 50px; height: 50px; border-radius: 8px; margin-right: 12px; object-fit: cover; background: #f0f0f0; cursor: zoom-in; }
+        #search-bar { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: 1px solid #ccc; font-size: 16px; box-sizing: border-box; }
+
+        /* ZOOM MODAL */
+        #zoom-modal { display: none; position: fixed; z-index: 3000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; }
+        #zoom-img { max-width: 90%; max-height: 80%; border-radius: 10px; border: 2px solid white; }
     </style>
 </head>
 <body>
@@ -75,7 +81,13 @@
 </div>
 
 <div id="stock" class="page">
+    <input type="text" id="search-bar" placeholder="🔍 Search barcode..." onkeyup="filterStock()">
     <div id="stock-list" style="text-align: left;">Loading...</div>
+</div>
+
+<div id="zoom-modal" onclick="this.style.display='none'">
+    <img id="zoom-img" src="">
+    <p style="color:white; margin-top:10px;">Click to close</p>
 </div>
 
 <script>
@@ -91,7 +103,7 @@
     function closeNav() { document.getElementById("mySidenav").style.width = "0"; }
 
     function unlockAndStart() {
-        beep.play().catch(() => {}); // Unlocks sound for iPhone/Samsung
+        beep.play().catch(() => {});
         showPage('scan');
     }
 
@@ -127,7 +139,6 @@
         const data = await res.json();
         document.getElementById('qty-val').innerText = data.result || 0;
         
-        // Fetch Photo
         const imgRes = await fetch(`${url}/get/img-${activeBC}`, { headers: { Authorization: `Bearer ${token}` } });
         const imgData = await imgRes.json();
         const imgEl = document.getElementById('product-photo');
@@ -177,13 +188,34 @@
             const iRes = await fetch(`${url}/get/img-${k}`, { headers: { Authorization: `Bearer ${token}` } });
             const iData = await iRes.json();
             const photo = iData.result || "https://via.placeholder.com/50?text=No+Pic";
-            html += `<div class="stock-card">
-                <img class="thumb" src="${photo}">
+            html += `<div class="stock-card" data-barcode="${k}">
+                <img class="thumb" src="${photo}" onclick="openZoom('${photo}')">
                 <div style="flex-grow:1"><b>${k}</b><br><small>Qty: ${vData.result}</small></div>
                 <button onclick="deleteItem('${k}')" style="background:none; border:none; color:red; font-size:18px;">🗑️</button>
             </div>`;
         }
         document.getElementById('stock-list').innerHTML = html || "Empty";
+    }
+
+    // SEARCH FUNCTION
+    function filterStock() {
+        let input = document.getElementById('search-bar').value.toLowerCase();
+        let cards = document.getElementsByClassName('stock-card');
+        for (let i = 0; i < cards.length; i++) {
+            let barcode = cards[i].getAttribute('data-barcode');
+            if (barcode.includes(input)) {
+                cards[i].style.display = "flex";
+            } else {
+                cards[i].style.display = "none";
+            }
+        }
+    }
+
+    // BIG PHOTO FUNCTION
+    function openZoom(src) {
+        if(src.includes('placeholder')) return;
+        document.getElementById('zoom-img').src = src;
+        document.getElementById('zoom-modal').style.display = 'flex';
     }
 
     async function deleteItem(k) {
@@ -200,7 +232,6 @@
         codeReader.reset();
         initCamera();
     }
-
     loadStats();
 </script>
 </body>
