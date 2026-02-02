@@ -3,75 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Condis 3416 - Gold Edition</title>
-    <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <title>Condis 3416 - Fix</title>
+    <script src="https://unpkg.com/@zxing/library@0.19.1"></script>
     <style>
-        :root { --condis-blue: #005696; --condis-red: #e30613; --warning-orange: #ff9800; --safe-green: #2e7d32; }
-        body { font-family: sans-serif; margin: 0; background: #f4f7f9; touch-action: manipulation; }
-        
-        header { background: var(--condis-blue); color: white; padding: 15px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 1000; }
-        .menu-btn { font-size: 30px; cursor: pointer; padding: 0 10px; }
-
-        .sidenav { height: 100%; width: 0; position: fixed; z-index: 2000; top: 0; left: 0; background: #111; overflow-x: hidden; transition: 0.3s; }
-        .sidenav a { padding: 20px; text-decoration: none; font-size: 18px; color: #bbb; display: block; border-bottom: 1px solid #222; }
-
-        .page { display: none; padding: 15px; text-align: center; }
-        .active-page { display: block; }
-
-        .home-card { background: white; padding: 30px 20px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); margin-top: 20px; }
-        .btn-start { width: 100%; padding: 18px; background: var(--condis-red); color: white; border: none; border-radius: 15px; font-weight: bold; font-size: 18px; cursor: pointer; }
-
-        #video-container { width: 100%; height: 260px; background: #000; border-radius: 20px; overflow: hidden; position: relative; }
-        video { width: 100%; height: 100%; object-fit: cover; }
-        
-        .photo-circle { width: 110px; height: 110px; background: white; border-radius: 50%; margin: -55px auto 10px; border: 4px solid var(--condis-blue); overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-        .photo-circle img { width: 100%; height: 100%; object-fit: cover; }
-
-        .qty-box { background: white; padding: 20px; border-radius: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); margin-top: 10px; }
-        .btn-qty { width: 70px; height: 70px; border-radius: 50%; border: none; font-size: 30px; background: var(--condis-blue); color: white; margin: 0 5px; }
-
-        .expiry-input { width: 100%; padding: 12px; margin-top: 10px; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; box-sizing: border-box; }
-
-        .stock-card { background: white; display: flex; align-items: center; padding: 10px; margin-bottom: 8px; border-radius: 12px; border: 1px solid #eee; }
-        .expired-bg { border-left: 10px solid var(--condis-red) !important; background: #fff5f5; }
-        .warning-bg { border-left: 10px solid var(--warning-orange) !important; background: #fffaf0; }
-        .safe-bg { border-left: 10px solid var(--safe-green) !important; }
-
-        .thumb { width: 50px; height: 50px; border-radius: 8px; margin-right: 12px; object-fit: cover; }
-        input[type="text"] { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: 1px solid #ccc; box-sizing: border-box; }
-        
-        #zoom-modal { display: none; position: fixed; z-index: 3000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; }
-        #zoom-img { max-width: 90%; max-height: 80%; border-radius: 10px; border: 2px solid white; }
+        :root { --blue: #005696; --red: #e30613; }
+        body { font-family: sans-serif; margin: 0; background: #f4f7f9; text-align: center; }
+        header { background: var(--blue); color: white; padding: 15px; font-weight: bold; }
+        .page { display: none; padding: 20px; }
+        .active { display: block; }
+        #video { width: 100%; height: 250px; background: black; border-radius: 15px; object-fit: cover; }
+        .btn { width: 100%; padding: 15px; margin: 10px 0; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        .btn-red { background: var(--red); color: white; }
+        .btn-blue { background: var(--blue); color: white; }
+        .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-top: 10px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
-<div id="mySidenav" class="sidenav">
-  <a href="#" onclick="showPage('home')">🏠 Dashboard</a>
-  <a href="#" onclick="showPage('scan')">📸 Master Scanner</a>
-  <a href="#" onclick="showPage('stock')">📦 Inventory List</a>
-  <a href="#" onclick="showPage('alerts')">🗓️ Expiry Master List</a>
-  <a href="#" onclick="closeNav()" style="color:var(--condis-red)">Close ×</a>
-</div>
+<header>CONDIS 3416 - SYSTEM OK</header>
 
-<header>
-    <div class="menu-btn" onclick="openNav()">☰</div>
-    <b>CONDIS 3416</b>
-    <div style="width:40px"></div>
-</header>
-
-<div id="home" class="page active-page">
-    <div class="home-card">
-        <p style="color:#888;">Items in Database</p>
-        <h1 id="total-items" style="font-size: 60px; margin: 10px 0; color: var(--condis-blue);">...</h1>
-        <button class="btn-start" onclick="unlockAndStart()">START SCANNING</button>
+<div id="home" class="page active">
+    <div class="card">
+        <h2 id="count">...</h2>
+        <p>Items in Database</p>
+        <button class="btn btn-red" onclick="go('scan')">START SCANNER</button>
+        <button class="btn btn-blue" onclick="go('stock')">VIEW ALL STOCK</button>
     </div>
 </div>
 
 <div id="scan" class="page">
-    <div id="video-container"><video id="video"></video></div>
-    <div class="photo-circle" onclick="document.getElementById('file-input').click()">
-        <img id="product-photo" style="display:none;">
-        <span id="photo-label" style="font-size:11px; color:#999;">PHOTO</span>
+    <video id="video"></video>
+    <div class="card">
+        <h3 id="bc-display">SCAN PRODUCT</h3>
+        <h1 id="qty-display" style="font-size: 50px; margin: 10px;">0</h1>
+        <div style="display:flex; gap: 10px;">
+            <button class="btn btn-blue" onclick="sync('update', -1)">- 1</button>
+            <button class="btn btn-blue" onclick="sync('update', 1)">+ 1</button>
+        </div>
+        <p style="text-align:left; font-size:12px;">Expiry Date:</p>
+        <input type="date" id="exp-input" onchange="saveExp()">
+        <button class="btn" style="background:#ddd" onclick="go('home')">BACK</button>
     </div>
-    <input type="file" id="file-input" accept="image/*" capture="environment" onchange
+</div>
+
+<div id="stock" class="page">
+    <button class="btn" style="background:#ddd" onclick="go('home')">BACK TO HOME</button>
+    <div id="list-container" style="text-align: left;"></div>
+</div>
+
+<script>
+    const URL = "https://epic-dory-42115.upstash.io";
+    const TOKEN = "AaSDAAIncDIwYzlhNWU0ODUzZmQ0OWY0OGVlODE1NTg5NWRjOWIzNXAyNDIxMTU";
+    const beep = new Audio("https://actions.google.com/sounds/v1/communication/notification_high_intensity.ogg");
+    const reader = new ZXing.BrowserMultiFormatReader();
+    let currentBC = null;
+
+    function go(id) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        if(id === 'scan') startCam(); else reader.reset();
+        if(id === 'home') loadStats();
+        if(id === 'stock') loadAll();
+    }
+
+    async function startCam() {
+        const devices = await reader.listVideoInputDevices();
+        const id = devices[devices.length - 1].deviceId;
+        reader.decodeFromVideoDevice(id, 'video', (res) => {
+            if(res && res.text !== currentBC) {
+                currentBC = res.text;
+                document.getElementById('bc-display').innerText = currentBC;
+                beep.play();
+                sync('get');
+            }
+        });
+    }
+
+    async function sync(type, val = 0) {
+        if(!currentBC) return;
+        let path = type === 'get' ? `/get/${currentBC}` : `/incrby/${currentBC}/${val}`;
+        const res = await fetch(URL + path, { headers: { Authorization: `Bearer ${TOKEN}` } });
+        const data = await res.json();
+        document.getElementById('qty-display').innerText = data.result || 0;
+        
+        const dateRes = await fetch(`${URL}/get/date-${currentBC}`, { headers: { Authorization: `Bearer ${TOKEN}` } });
+        const dateData = await dateRes.json();
+        document.getElementById('exp-input').value = dateData.result || "";
+    }
+
+    async function saveExp() {
+        const d = document.getElementById('exp-input').value;
+        await fetch(`${URL}/set/date-${currentBC}`, { method: 'POST', headers: { Authorization: `Bearer ${TOKEN}` }, body: d });
+    }
+
+    async function loadStats() {
+        const res = await fetch(`${URL}/keys/*`, { headers: { Authorization: `Bearer ${TOKEN}` } });
+        const keys = await res.json();
+        const items = keys.result.filter(k => !k.includes('date-') && !k.includes('img-'));
+        document.getElementById('count').innerText = items.length;
+    }
+
+    async function loadAll() {
+        const container = document.getElementById('list-container');
+        container.innerHTML = "Loading...";
+        const res = await fetch(`${URL}/keys/*`, { headers: { Authorization: `Bearer ${TOKEN}` } });
+        const keys = (await res.json()).result.filter(k => !k.includes('date-') && !k.includes('img-'));
+        
+        let html = "";
+        for(let k of keys) {
+            const v = await (await fetch(`${URL}/get/${k}`, { headers: { Authorization: `Bearer ${TOKEN}` } })).json();
+            html += `<div class="card"><b>Barcode: ${k}</b><br>Qty: ${v.result}</div>`;
+        }
+        container.innerHTML = html || "Empty";
+    }
+
+    loadStats();
+</script>
+</body>
+</html>
