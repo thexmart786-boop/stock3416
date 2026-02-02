@@ -3,39 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Condis 3416 - Ultimate</title>
+    <title>Condis 3416 - Fast</title>
     <style>
         :root { --blue: #005696; --red: #e30613; --orange: #ff9800; --green: #2e7d32; }
         body { font-family: sans-serif; margin: 0; background: #f4f7f9; -webkit-tap-highlight-color: transparent; }
-        
         header { background: var(--blue); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; position: sticky; top:0; z-index: 9999; }
         .menu-btn { font-size: 30px; padding: 5px 12px; cursor: pointer; background: rgba(255,255,255,0.2); border-radius: 8px; }
-
         .sidenav { height: 100%; width: 0; position: fixed; z-index: 10000; top: 0; left: 0; background: #111; overflow-x: hidden; transition: 0.3s; padding-top: 60px; }
         .sidenav a { padding: 20px 25px; text-decoration: none; font-size: 20px; color: white; display: block; border-bottom: 1px solid #333; }
-
         .page { display: none; padding: 15px; text-align: center; }
         .active-page { display: block !important; }
-
         .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-top: 15px; }
-        
-        /* PHOTO & SCANNER */
         #video-container { width: 100%; height: 240px; background: #000; border-radius: 20px; overflow: hidden; position: relative; }
         video { width: 100%; height: 100%; object-fit: cover; }
         .photo-circle { width: 90px; height: 90px; background: white; border-radius: 50%; margin: -45px auto 10px; border: 4px solid var(--blue); overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; z-index: 10; }
         .photo-circle img { width: 100%; height: 100%; object-fit: cover; }
-
-        /* BUTTONS */
-        .btn-qty { width: 70px; height: 70px; border-radius: 50%; border: none; font-size: 30px; background: var(--blue); color: white; margin: 0 10px; cursor: pointer; }
+        .btn-qty { width: 70px; height: 70px; border-radius: 50%; border: none; font-size: 30px; background: var(--blue); color: white; margin: 0 5px; cursor: pointer; }
         .btn-red { width: 100%; padding: 18px; background: var(--red); color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 18px; margin-top: 20px; }
-
-        /* LISTS */
         .stock-item { background: white; padding: 12px; margin-bottom: 8px; border-radius: 10px; display: flex; align-items: center; text-align: left; border: 1px solid #ddd; }
         .expired-bg { border-left: 10px solid var(--red); background: #fff5f5; }
         .warning-bg { border-left: 10px solid var(--orange); background: #fffaf0; }
         .safe-bg { border-left: 10px solid var(--green); }
         .thumb { width: 45px; height: 45px; border-radius: 5px; margin-right: 12px; object-fit: cover; }
-        
+        .del-btn { background: none; border: none; font-size: 22px; cursor: pointer; padding: 10px; margin-left: auto; }
         input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; }
     </style>
 </head>
@@ -45,7 +35,7 @@
   <a href="#" onclick="showPage('home'); return false;">🏠 Dashboard</a>
   <a href="#" onclick="showPage('scan'); return false;">📸 Master Scanner</a>
   <a href="#" onclick="showPage('stock'); return false;">📦 Inventory List</a>
-  <a href="#" onclick="showPage('alerts'); return false;">🗓️ Expiry Master List</a>
+  <a href="#" onclick="showPage('alerts'); return false;">🗓️ Expiry List</a>
   <a href="#" onclick="closeNav(); return false;" style="color:var(--red)">Close ×</a>
 </div>
 
@@ -70,13 +60,11 @@
         <span id="prod-label" style="font-size:11px; color:#999;">ADD PHOTO</span>
     </div>
     <input type="file" id="file-in" accept="image/*" capture="environment" onchange="upImg(event)" style="display:none;">
-    
     <div class="card">
         <code id="bc-display" style="color:#888;">READY</code>
         <h1 id="qty-val" style="font-size: 50px; margin: 5px;">0</h1>
         <button class="btn-qty" onclick="sync('update', -1)">-</button>
         <button class="btn-qty" onclick="sync('update', 1)">+</button>
-        <p style="text-align:left; font-size:12px; margin-top:15px;">Expiry Date:</p>
         <input type="date" id="exp-in" onchange="saveDate()">
     </div>
 </div>
@@ -180,31 +168,39 @@
         const keys = res.result.filter(k => !k.includes('date-') && !k.includes('img-'));
         
         let prods = [];
-        for(let k of keys) {
+        // Faster parallel loading
+        await Promise.all(keys.map(async (k) => {
             const v = (await (await fetch(`${URL}/get/${k}`, { headers: { Authorization: `Bearer ${TOKEN}` } })).json()).result;
             const d = (await (await fetch(`${URL}/get/date-${k}`, { headers: { Authorization: `Bearer ${TOKEN}` } })).json()).result;
             const i = (await (await fetch(`${URL}/get/img-${k}`, { headers: { Authorization: `Bearer ${TOKEN}` } })).json()).result;
-            if(onlyDates && !d) continue;
-            prods.push({bc: k, q: v, d: d, i: i});
-        }
+            if(!onlyDates || (onlyDates && d)) prods.push({bc: k, q: v, d: d, i: i});
+        }));
+
         prods.sort((a,b) => (a.d || '9999') > (b.d || '9999') ? 1 : -1);
 
         let html = "";
         const now = new Date();
         const week = new Date(); week.setDate(now.getDate()+7);
         for(let p of prods) {
-            let cls = "safe-bg";
-            if(p.d) {
-                const ed = new Date(p.d);
-                if(ed < now) cls = "expired-bg";
-                else if(ed < week) cls = "warning-bg";
-            }
+            let cls = p.d ? (new Date(p.d) < now ? "expired-bg" : (new Date(p.d) < week ? "warning-bg" : "safe-bg")) : "safe-bg";
             html += `<div class="stock-item ${cls}" data-bc="${p.bc}">
                 <img class="thumb" src="${p.i || 'https://via.placeholder.com/50'}">
                 <div><b>${p.bc}</b><br><small>Qty: ${p.q} | Exp: ${p.d || '??'}</small></div>
+                <button class="del-btn" onclick="delItem('${p.bc}', ${onlyDates})">🗑️</button>
             </div>`;
         }
-        document.getElementById(listId).innerHTML = html || "Nothing yet.";
+        document.getElementById(listId).innerHTML = html || "Empty.";
+    }
+
+    async function delItem(bc, onlyDates) {
+        if(confirm("Delete " + bc + " forever?")) {
+            await Promise.all([
+                fetch(`${URL}/del/${bc}`, { headers: { Authorization: `Bearer ${TOKEN}` } }),
+                fetch(`${URL}/del/date-${bc}`, { headers: { Authorization: `Bearer ${TOKEN}` } }),
+                fetch(`${URL}/del/img-${bc}`, { headers: { Authorization: `Bearer ${TOKEN}` } })
+            ]);
+            loadList(onlyDates);
+        }
     }
 
     function search(lid, iid) {
