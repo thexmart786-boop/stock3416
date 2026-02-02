@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Condis 3416 - Quality Control</title>
+    <title>Condis 3416 - Gold Edition</title>
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <style>
         :root { --condis-blue: #005696; --condis-red: #e30613; --warning-orange: #ff9800; --safe-green: #2e7d32; }
@@ -33,16 +33,15 @@
         .expiry-input { width: 100%; padding: 12px; margin-top: 10px; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; box-sizing: border-box; }
 
         .stock-card { background: white; display: flex; align-items: center; padding: 10px; margin-bottom: 8px; border-radius: 12px; border: 1px solid #eee; }
-        
-        /* EXPIRY COLOR CODES */
         .expired-bg { border-left: 10px solid var(--condis-red) !important; background: #fff5f5; }
         .warning-bg { border-left: 10px solid var(--warning-orange) !important; background: #fffaf0; }
         .safe-bg { border-left: 10px solid var(--safe-green) !important; }
 
         .thumb { width: 50px; height: 50px; border-radius: 8px; margin-right: 12px; object-fit: cover; }
-        #search-bar { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: 1px solid #ccc; box-sizing: border-box; }
+        input[type="text"] { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: 1px solid #ccc; box-sizing: border-box; }
+        
         #zoom-modal { display: none; position: fixed; z-index: 3000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; }
-        #zoom-img { max-width: 90%; max-height: 80%; border-radius: 10px; }
+        #zoom-img { max-width: 90%; max-height: 80%; border-radius: 10px; border: 2px solid white; }
     </style>
 </head>
 <body>
@@ -50,7 +49,7 @@
 <div id="mySidenav" class="sidenav">
   <a href="#" onclick="showPage('home')">🏠 Dashboard</a>
   <a href="#" onclick="showPage('scan')">📸 Master Scanner</a>
-  <a href="#" onclick="showPage('stock')">📦 Inventory (Extra Stock)</a>
+  <a href="#" onclick="showPage('stock')">📦 Inventory List</a>
   <a href="#" onclick="showPage('alerts')">🗓️ Expiry Master List</a>
   <a href="#" onclick="closeNav()" style="color:var(--condis-red)">Close ×</a>
 </div>
@@ -75,183 +74,4 @@
         <img id="product-photo" style="display:none;">
         <span id="photo-label" style="font-size:11px; color:#999;">PHOTO</span>
     </div>
-    <input type="file" id="file-input" accept="image/*" capture="environment" onchange="uploadPhoto(event)" style="display:none;">
-    <div class="qty-box">
-        <code id="bc-res" style="color:#aaa;">READY</code>
-        <h1 id="qty-val" style="font-size: 60px; margin: 5px 0;">0</h1>
-        <div>
-            <button class="btn-qty" onclick="sync('update', -1)">-</button>
-            <button class="btn-qty" onclick="sync('update', 1)">+</button>
-        </div>
-        <p style="text-align:left; margin:15px 0 0 0; font-size:12px; color:#666;">Scan for Expiry Date:</p>
-        <input type="date" id="expiry-date-input" class="expiry-input" onchange="saveExpiry()">
-    </div>
-</div>
-
-<div id="stock" class="page">
-    <input type="text" id="search-bar" placeholder="🔍 Search stock..." onkeyup="filterStock('stock-list')">
-    <div id="stock-list" style="text-align: left;"></div>
-</div>
-
-<div id="alerts" class="page">
-    <input type="text" id="search-alert" placeholder="🔍 Search expiry list..." onkeyup="filterStock('alert-list')" style="width:100%; padding:12px; margin-bottom:15px; border-radius:10px; border:1px solid #ccc;">
-    <div id="alert-list" style="text-align: left;"></div>
-</div>
-
-<div id="zoom-modal" onclick="this.style.display='none'"><img id="zoom-img" src=""></div>
-
-<script>
-    const url = "https://epic-dory-42115.upstash.io"; 
-    const token = "AaSDAAIncDIwYzlhNWU0ODUzZmQ0OWY0OGVlODE1NTg5NWRjOWIzNXAyNDIxMTU"; 
-    const beep = new Audio("https://www.soundjay.com/buttons/beep-07a.mp3");
-    const codeReader = new ZXing.BrowserMultiFormatReader();
-    let activeBC = null;
-    let selectedDeviceId;
-
-    function openNav() { document.getElementById("mySidenav").style.width = "250px"; }
-    function closeNav() { document.getElementById("mySidenav").style.width = "0"; }
-    function unlockAndStart() { beep.play().catch(() => {}); showPage('scan'); }
-
-    function showPage(p) {
-        document.querySelectorAll('.page').forEach(page => page.style.display = 'none');
-        document.getElementById(p).style.display = 'block';
-        closeNav();
-        if(p === 'scan') initCamera();
-        else if(p === 'home') loadStats();
-        else if(p === 'stock') loadItems(false);
-        else if(p === 'alerts') loadItems(true);
-        else codeReader.reset();
-    }
-
-    async function initCamera() {
-        try {
-            const devices = await codeReader.listVideoInputDevices();
-            selectedDeviceId = devices[devices.length - 1].deviceId;
-            codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result) => {
-                if(result && result.text !== activeBC) {
-                    activeBC = result.text;
-                    document.getElementById('bc-res').innerText = activeBC;
-                    beep.play().catch(() => {});
-                    sync('get');
-                }
-            });
-        } catch(e) {}
-    }
-
-    async function sync(type, val = 0) {
-        if(!activeBC) return;
-        let endpoint = type === 'get' ? `${url}/get/${activeBC}` : `${url}/incrby/${activeBC}/${val}`;
-        const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
-        const data = await res.json();
-        document.getElementById('qty-val').innerText = data.result || 0;
-        const dateRes = await fetch(`${url}/get/date-${activeBC}`, { headers: { Authorization: `Bearer ${token}` } });
-        const dateData = await dateRes.json();
-        document.getElementById('expiry-date-input').value = dateData.result || "";
-        loadPhoto();
-    }
-
-    async function loadPhoto() {
-        const imgRes = await fetch(`${url}/get/img-${activeBC}`, { headers: { Authorization: `Bearer ${token}` } });
-        const imgData = await imgRes.json();
-        const imgEl = document.getElementById('product-photo');
-        if(imgData.result) {
-            imgEl.src = imgData.result; imgEl.style.display = 'block'; document.getElementById('photo-label').style.display = 'none';
-        } else {
-            imgEl.style.display = 'none'; document.getElementById('photo-label').style.display = 'block';
-        }
-    }
-
-    async function saveExpiry() {
-        if(!activeBC) return;
-        const dateVal = document.getElementById('expiry-date-input').value;
-        await fetch(`${url}/set/date-${activeBC}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: dateVal });
-    }
-
-    function uploadPhoto(event) {
-        const file = event.target.files[0];
-        if (!file || !activeBC) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const img = new Image();
-            img.onload = function() {
-                const canvas = document.createElement('canvas');
-                canvas.width = 100; canvas.height = 100;
-                canvas.getContext('2d').drawImage(img, 0, 0, 100, 100);
-                const tinyData = canvas.toDataURL('image/jpeg', 0.5);
-                fetch(`${url}/set/img-${activeBC}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: tinyData });
-                document.getElementById('product-photo').src = tinyData;
-                document.getElementById('product-photo').style.display = 'block';
-                document.getElementById('photo-label').style.display = 'none';
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-    }
-
-    async function loadStats() {
-        const res = await fetch(`${url}/keys/*`, { headers: { Authorization: `Bearer ${token}` } });
-        const keys = (await res.json()).result || [];
-        document.getElementById('total-items').innerText = keys.filter(k => !k.startsWith('img-') && !k.startsWith('date-')).length;
-    }
-
-    async function loadItems(showOnlyWithDates) {
-        const listId = showOnlyWithDates ? 'alert-list' : 'stock-list';
-        document.getElementById(listId).innerHTML = "Loading...";
-        const res = await fetch(`${url}/keys/*`, { headers: { Authorization: `Bearer ${token}` } });
-        const keys = ((await res.json()).result || []).filter(k => !k.startsWith('img-') && !k.startsWith('date-'));
-        
-        let products = [];
-        for (let k of keys) {
-            const v = (await (await fetch(`${url}/get/${k}`, { headers: { Authorization: `Bearer ${token}` } })).json()).result;
-            const d = (await (await fetch(`${url}/get/date-${k}`, { headers: { Authorization: `Bearer ${token}` } })).json()).result;
-            const i = (await (await fetch(`${url}/get/img-${k}`, { headers: { Authorization: `Bearer ${token}` } })).json()).result;
-            if(showOnlyWithDates && !d) continue; // If we are on Expiry page, skip items with no date
-            products.push({ bc: k, qty: v, date: d, img: i });
-        }
-
-        // Sort: Danger (expired) first, then soonest, then safe.
-        products.sort((a, b) => (a.date || '9999') > (b.date || '9999') ? 1 : -1);
-
-        let html = "";
-        const today = new Date();
-        const nextWeek = new Date(); nextWeek.setDate(today.getDate() + 7);
-
-        for (let p of products) {
-            let statusClass = "safe-bg";
-            if(p.date) {
-                const exp = new Date(p.date);
-                if(exp < today) statusClass = "expired-bg";
-                else if(exp < nextWeek) statusClass = "warning-bg";
-            }
-
-            html += `<div class="stock-card ${statusClass}" data-barcode="${p.bc}">
-                <img class="thumb" src="${p.img || 'https://via.placeholder.com/50'}" onclick="openZoom('${p.img}')">
-                <div style="flex-grow:1">
-                    <b>${p.bc}</b><br><small>Qty: ${p.qty} | <b>EXP: ${p.date || 'NOT SET'}</b></small>
-                </div>
-                <button onclick="deleteItem('${p.bc}', ${showOnlyWithDates})" style="background:none; border:none; color:red;">🗑️</button>
-            </div>`;
-        }
-        document.getElementById(listId).innerHTML = html || "No items found.";
-    }
-
-    function filterStock(listId) {
-        let inputId = listId === 'alert-list' ? 'search-alert' : 'search-bar';
-        let val = document.getElementById(inputId).value;
-        document.querySelectorAll(`#${listId} .stock-card`).forEach(c => c.style.display = c.getAttribute('data-barcode').includes(val) ? "flex" : "none");
-    }
-
-    function openZoom(src) { if(src) { document.getElementById('zoom-img').src = src; document.getElementById('zoom-modal').style.display = 'flex'; } }
-
-    async function deleteItem(k, showOnlyWithDates) {
-        if(confirm("Delete item?")) {
-            await fetch(`${url}/del/${k}`, { headers: { Authorization: `Bearer ${token}` } });
-            await fetch(`${url}/del/img-${k}`, { headers: { Authorization: `Bearer ${token}` } });
-            await fetch(`${url}/del/date-${k}`, { headers: { Authorization: `Bearer ${token}` } });
-            loadItems(showOnlyWithDates);
-        }
-    }
-    loadStats();
-</script>
-</body>
-</html>
+    <input type="file" id="file-input" accept="image/*" capture="environment" onchange
